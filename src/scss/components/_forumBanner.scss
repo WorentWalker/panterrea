@@ -1,0 +1,86 @@
+@use '../abstracts/variables.scss' as *;
+
+.banner{
+  position: fixed;
+  bottom: 0;
+  height: 95px;
+  width: 100%;
+  background: #FAFCF1;
+  z-index: 99;
+
+  @media (max-width: 767px) {
+    display: none;
+  }
+
+  &__container{
+    position: relative;
+    max-width: 1200px;
+    height: 100%;
+    padding: 0 24px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 32px;
+  }
+
+  &__icon{
+    display: flex;
+    width: 74px;
+    height: 68px;
+    justify-content: center;
+    align-items: center;
+    border-radius: 90px;
+    background: rgba(20, 117, 117, 0.09);
+
+    @media (max-width: 413px) {
+      display: none;
+    }
+  }
+
+  &__info{
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+
+    @media (max-width: 1023px) {
+      max-width: 45%;
+    }
+
+    @media (max-width: 767px) {
+      display: none;
+    }
+  }
+
+  &__title{
+    color: $black;
+  }
+
+  &__subtitle{
+    color: $text_primary;
+    font-family: $font_montserrat;
+    font-size: 16px;
+    font-weight: 500;
+
+    @media (max-width: 1023px) {
+      display: none;
+    }
+  }
+
+  &__close{
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    right: 24px;
+    width: 24px;
+    height: 24px;
+    cursor: pointer;
+
+    @media (max-width: 767px) {
+      position: relative;
+      top: 0;
+      right: 0;
+      transform: none;
+    }
+  }
+}

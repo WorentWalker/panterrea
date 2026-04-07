@@ -1,0 +1,13 @@
+@use '../abstracts/variables.scss' as *;
+
+.searchPage{
+  padding-bottom: 80px;
+
+  .searchBlock{
+    margin-top: 40px;
+  }
+
+  .catalog__items{
+    margin-top: 24px;
+  }
+}

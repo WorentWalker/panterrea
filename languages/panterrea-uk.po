@@ -1,0 +1,1161 @@
+# Copyright (C) 2025 Relevant Software Team
+# This file is distributed under the same license as the Panterrea Theme theme.
+msgid ""
+msgstr ""
+"Project-Id-Version: Panterrea Theme 1.0\n"
+"Report-Msgid-Bugs-To: https://wordpress.org/support/theme/panterrea_v1\n"
+"POT-Creation-Date: 2025-04-18T00:27:02+02:00\n"
+"PO-Revision-Date: 2025-06-11 02:06+0300\n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Language: uk\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: Poedit 3.5\n"
+"X-Domain: panterrea_v1\n"
+
+#. Theme Name of the theme
+#: style.css
+msgid "Panterrea Theme"
+msgstr ""
+
+#. Description of the theme
+#: style.css
+msgid "WordPress Theme"
+msgstr ""
+
+#. Author of the theme
+#: style.css
+msgid "Relevant Software Team"
+msgstr ""
+
+#. Author URI of the theme
+#: style.css
+msgid "https://relevant.software/"
+msgstr ""
+
+#: 404.php:9
+msgid "Оголошення не знайдено або його було деактивовано"
+msgstr ""
+
+#: 404.php:11
+msgid "Цієї сторінки не існує"
+msgstr ""
+
+#: 404.php:13
+msgid "Повернутися на головну"
+msgstr ""
+
+#: functions.php:324
+msgid "Цей email вже зареєстрований."
+msgstr ""
+
+#: functions.php:339
+msgid "Цей номер телефону вже зареєстрований."
+msgstr ""
+
+#: functions.php:369
+msgid "Вітаємо! Ви успішно зареєструвались на платформі PanTerrea."
+msgstr ""
+
+#: functions.php:428
+msgid "Panterrea: Підтвердження вашої електронної пошти"
+msgstr ""
+
+#: functions.php:452
+msgid "Користувач не знайдений."
+msgstr ""
+
+#: functions.php:458 functions.php:475 functions.php:477
+msgid "Email успішно підтверджено."
+msgstr ""
+
+#: functions.php:467
+msgid "Ключ відсутній або не дійсний."
+msgstr ""
+
+#: functions.php:598 functions.php:652
+msgid "Цей email не зареєстрований."
+msgstr ""
+
+#: functions.php:606
+msgid "Невірний пароль."
+msgstr ""
+
+#: functions.php:698
+msgid "Panterrea: Скидання паролю"
+msgstr ""
+
+#: functions.php:761 functions.php:925
+msgid "Паролі не збігаються."
+msgstr ""
+
+#: functions.php:786
+msgid "Пароль успішно відновлено."
+msgstr ""
+
+#: functions.php:918
+msgid "Некоректний існуючий пароль."
+msgstr ""
+
+#: functions.php:964
+msgid "Ви уже авторизовані."
+msgstr ""
+
+#: functions.php:1018 functions.php:1232 functions.php:1841 functions.php:1919
+#: functions.php:2010
+msgid "Авторизуйтесь для доступу."
+msgstr ""
+
+#: functions.php:1027 functions.php:1242 functions.php:1850 functions.php:1928
+#: functions.php:2019 templates/ad-create.php:21 templates/ad-edit.php:19
+#: templates/user-ad.php:19 templates/user-favorites.php:19
+#: templates/user-messages.php:19
+msgid "Підтвердіть свою електронну пошту для доступу."
+msgstr ""
+
+#: functions.php:1207 template-parts/catalog.php:182
+msgid "Немає оголошень по запиту"
+msgstr ""
+
+#: functions.php:1500
+msgid "Оголошення %s успішно опубліковано."
+msgstr ""
+
+#: functions.php:1881
+msgid "Оголошення деактивовано."
+msgstr ""
+
+#: functions.php:1898
+msgid "Оголошення активовано."
+msgstr ""
+
+#: functions.php:1986
+msgid "Оголошення %s успішно видалено."
+msgstr ""
+
+#: functions.php:1988
+msgid "Оголошення успішно видалено."
+msgstr ""
+
+#: functions.php:1990
+msgid "Не вдалося видалити оголошення."
+msgstr ""
+
+#: functions.php:2128
+msgid "Оголошення %s тепер рекламується."
+msgstr ""
+
+#: functions.php:2130
+msgid "Оплата успішна! Тепер оголошення рекламується."
+msgstr ""
+
+#: functions.php:2132
+msgid "Помилка при оновленні оголошення."
+msgstr ""
+
+#: functions.php:2230
+msgid "Користувач заблокував вас."
+msgstr ""
+
+#: functions.php:2338
+msgid "Нові повідомлення у чаті."
+msgstr ""
+
+#: functions.php:2546
+msgid "Користувач розблокований."
+msgstr ""
+
+#: functions.php:2560
+msgid "Користувач заблокований."
+msgstr ""
+
+#: functions.php:2624
+msgid "Чат видалено."
+msgstr ""
+
+#: functions.php:2682 templates/user-profile.php:185
+msgid "Пароль відновлено"
+msgstr ""
+
+#: functions.php:2683 templates/user-profile.php:186
+msgid "Оголошення опубліковано"
+msgstr ""
+
+#: functions.php:2684 templates/user-profile.php:187
+msgid "Оголошення видалено"
+msgstr ""
+
+#: functions.php:2685 templates/user-profile.php:188
+msgid "Оголошення рекламується"
+msgstr ""
+
+#: functions.php:2686 templates/user-profile.php:189
+msgid "Нове повідомлення у чатах"
+msgstr ""
+
+#: functions.php:2687 templates/user-profile.php:190
+msgid "Реклама оголошення закінчується"
+msgstr ""
+
+#: functions.php:2688 templates/user-profile.php:191
+msgid "Реклама оголошення закінчилась"
+msgstr ""
+
+#: functions.php:2691
+msgid "Panterrea: Нова нотифікація"
+msgstr ""
+
+#: functions.php:2743
+msgid "Нотифікації успішно прочитані."
+msgstr ""
+
+#: functions.php:2768
+msgid "Всі нотифікації видалені."
+msgstr ""
+
+#: header.php:108
+msgid "Мій профіль"
+msgstr ""
+
+#: header.php:130 inc/breadcrumbs.php:13
+msgid "Каталог"
+msgstr ""
+
+#: header.php:131 templates/user-ad.php:80
+msgid "Мої оголошення"
+msgstr ""
+
+#: header.php:132 templates/user-messages.php:70
+msgid "Повідомлення"
+msgstr ""
+
+#: header.php:133 templates/user-profile.php:23
+msgid "Деталі профілю"
+msgstr ""
+
+#: header.php:134
+msgid "Вийти"
+msgstr ""
+
+#: header.php:140
+msgid "Вхід"
+msgstr ""
+
+#: header.php:144
+msgid "Додати оголошення"
+msgstr ""
+
+#: header.php:145
+msgid "Додати"
+msgstr ""
+
+#: header.php:149
+msgid "Назад до оголошень"
+msgstr ""
+
+#: header.php:163
+msgid "Сповіщення"
+msgstr ""
+
+#: header.php:183
+msgid "Видалити всі"
+msgstr ""
+
+#: inc/breadcrumbs.php:43 templates/ad-create.php:36
+msgid "Створення оголошення"
+msgstr ""
+
+#: inc/breadcrumbs.php:47
+msgid "Пошук"
+msgstr ""
+
+#: inc/cron.php:53 inc/cron.php:56
+msgid "Реклама оголошення %s завершиться через день."
+msgstr ""
+
+#: inc/cron.php:97
+msgid "Реклама оголошення %s завершилась."
+msgstr ""
+
+#: inc/formValidator.php:57
+msgid "Обов’язкове поле."
+msgstr ""
+
+#: inc/formValidator.php:60
+msgid "Неправильний email формат."
+msgstr ""
+
+#: inc/formValidator.php:64
+msgid "Некоректний формат введеного контактного номера."
+msgstr ""
+
+#: inc/formValidator.php:69
+msgid "Мінімальна довжина: %d символів."
+msgstr ""
+
+#: inc/formValidator.php:74
+msgid "Максимальна довжина: %d символів."
+msgstr ""
+
+#: inc/formValidator.php:78
+msgid "Допустимі лише літери, дефіс або пробіл між словами."
+msgstr ""
+
+#: inc/formValidator.php:81
+msgid "Допустимі лише цифри."
+msgstr ""
+
+#: inc/formValidator.php:89
+msgid "Повинен містити принаймні одну велику літеру."
+msgstr ""
+
+#: inc/formValidator.php:92
+msgid "Повинен містити хоча б одну малу літеру."
+msgstr ""
+
+#: inc/formValidator.php:95
+msgid "Повинен містити хоча б один спеціальний символ."
+msgstr ""
+
+#: single-catalog_post.php:105 template-parts/catalog-item.php:64
+#: templates/user-messages.php:116
+msgid "Ціна договірна"
+msgstr ""
+
+#: single-catalog_post.php:103
+msgid "Рекламувати"
+msgstr ""
+
+#: single-catalog_post.php:118
+msgid "Тимчасово деактивувати"
+msgstr ""
+
+#: single-catalog_post.php:124 templates/user-profile.php:90
+msgid "Редагувати"
+msgstr ""
+
+#: single-catalog_post.php:127 templates/user-messages.php:130
+msgid "Видалити"
+msgstr ""
+
+#: single-catalog_post.php:138
+msgid "Ви дійсно хочете видалити оголошення?"
+msgstr ""
+
+#: single-catalog_post.php:139
+msgid "Оголошення буде видалено назавжди"
+msgstr ""
+
+#: single-catalog_post.php:142 templates/user-messages.php:190
+msgid "Так, видалити"
+msgstr ""
+
+#: single-catalog_post.php:144 templates/ad-create.php:155
+#: templates/ad-edit.php:240 templates/user-messages.php:173
+#: templates/user-messages.php:191 templates/user-profile.php:130
+msgid "Скасувати"
+msgstr ""
+
+#: single-catalog_post.php:164 templates/about-us.php:339
+msgid "Надіслати повідомлення"
+msgstr ""
+
+#: single-catalog_post.php:174
+msgid "Додати в обране"
+msgstr ""
+
+#: single-catalog_post.php:178
+msgid "Поділитись"
+msgstr ""
+
+#: single-catalog_post.php:215
+msgid "Інші оголошення автора (%s)"
+msgstr ""
+
+#: single-catalog_post.php:218 single-catalog_post.php:283
+#: taxonomy-catalog_category.php:91 templates/homepage.php:74
+#: templates/homepage.php:107
+msgid "Показати всі"
+msgstr ""
+
+#: single-catalog_post.php:280
+msgid "Подібні оголошення (%s)"
+msgstr ""
+
+#: taxonomy-catalog_category.php:57 templates/homepage.php:81
+msgid "Кращі пропозиції"
+msgstr ""
+
+#: template-emails/confirmation-email.php:6
+msgid "Верифікація пошти"
+msgstr ""
+
+#: template-emails/confirmation-email.php:16
+msgid "Вітаємо, "
+msgstr ""
+
+#: template-emails/confirmation-email.php:18
+msgid ""
+"Ви успішно пройшли реєстрацію.<br>Для верифікації вашої електронної пошти "
+"натисніть на \"Верифікувати мою електронну пошту\". Посилання дійсне до "
+"повторного запрошення верифікації."
+msgstr ""
+
+#: template-emails/confirmation-email.php:21
+msgid "Верифікувати мою електронну пошту"
+msgstr ""
+
+#: template-emails/notification-email.php:18
+#: template-emails/reset-password-email.php:17
+msgid "Вітаємо,"
+msgstr ""
+
+#: template-emails/reset-password-email.php:6
+msgid "Скидання паролю"
+msgstr ""
+
+#: template-emails/reset-password-email.php:20
+msgid "Ми отримали запит на оновлення паролю з вашого профілю Panterrea."
+msgstr ""
+
+#: template-emails/reset-password-email.php:21
+msgid "Для оновлення паролю натисні на “Оновити пароль”"
+msgstr ""
+
+#: template-emails/reset-password-email.php:22
+msgid "Якщо ви не робили таких дій то можете проігнорувати це повідомлення"
+msgstr ""
+
+#: template-emails/reset-password-email.php:23
+msgid "Посилання дійсне протягом 1 години"
+msgstr ""
+
+#: template-emails/reset-password-email.php:26 templates/reset-password.php:72
+#: templates/user-profile.php:164
+msgid "Оновити пароль"
+msgstr ""
+
+#: template-parts/author-info.php:16
+msgid "Показати мобільний номер"
+msgstr ""
+
+#: template-parts/catalog-item.php:12 template-parts/catalog-item.php:22
+msgid "Рекламується"
+msgstr ""
+
+#: template-parts/catalog-item.php:62
+msgid "Ціна не доступна"
+msgstr ""
+
+#: template-parts/catalog.php:64 template-parts/catalog.php:107
+msgid "Всі"
+msgstr ""
+
+#: template-parts/catalog.php:101
+msgid "Фільтрувати"
+msgstr ""
+
+#: template-parts/catalog.php:128
+msgid "Сортувати"
+msgstr ""
+
+#: template-parts/catalog.php:133
+msgid "За новизною"
+msgstr ""
+
+#: template-parts/catalog.php:138
+msgid "За зростанням ціни (гривні)"
+msgstr ""
+
+#: template-parts/catalog.php:143
+msgid "За зростанням ціни (долари)"
+msgstr ""
+
+#: template-parts/catalog.php:148
+msgid "За зменшенням ціни (гривні)"
+msgstr ""
+
+#: template-parts/catalog.php:153
+msgid "За зменшенням ціни (долари)"
+msgstr ""
+
+#: template-parts/catalog.php:166
+msgid "Пошук за запитом \"%s\""
+msgstr ""
+
+#: template-parts/chat.php:7 templates/user-messages.php:126
+msgid "Переглянути оголошення"
+msgstr ""
+
+#: template-parts/chat.php:16
+msgid "Введіть повідомлення..."
+msgstr ""
+
+#: template-parts/check-email.php:3 templates/forgot-password.php:16
+#: templates/login.php:37
+msgid "Забули пароль?"
+msgstr ""
+
+#: template-parts/check-email.php:7
+msgid "Немає листа?"
+msgstr ""
+
+#: template-parts/check-email.php:7
+msgid "Надіслати повторно"
+msgstr ""
+
+#: template-parts/search-input.php:2
+msgid "Що вас цікавить ?"
+msgstr ""
+
+#: template-parts/search-input.php:7
+msgid "Рекомендації"
+msgstr ""
+
+#. Template Name of the theme
+msgid "About Us"
+msgstr ""
+
+#: templates/about-us.php:277
+msgid "Форма зворотнього зв’язку"
+msgstr ""
+
+#: templates/about-us.php:278
+msgid "Заповніть форму, і ми з вами зв’яжемося."
+msgstr ""
+
+#: templates/about-us.php:284 templates/about-us.php:285
+#: templates/register.php:22 templates/register.php:23
+#: templates/register.php:36 templates/register.php:37
+#: templates/user-profile.php:69 templates/user-profile.php:102
+#: templates/user-profile.php:103
+msgid "Ім’я"
+msgstr ""
+
+#: templates/about-us.php:289 templates/about-us.php:290
+#: templates/register.php:28 templates/register.php:29
+msgid "Прізвище"
+msgstr ""
+
+#: templates/about-us.php:297 templates/about-us.php:298
+#: templates/forgot-password.php:21 templates/forgot-password.php:22
+#: templates/login.php:25 templates/login.php:26 templates/register.php:56
+#: templates/register.php:57 templates/user-profile.php:80
+#: templates/user-profile.php:117 templates/user-profile.php:118
+msgid "Електронна адреса"
+msgstr ""
+
+#: templates/about-us.php:303 templates/about-us.php:304
+msgid "Номер телефону"
+msgstr ""
+
+#: templates/about-us.php:310
+msgid "Оберіть тему запиту?"
+msgstr ""
+
+#: templates/about-us.php:314
+msgid "Продаж / Купівля"
+msgstr ""
+
+#: templates/about-us.php:318
+msgid "Технічне питання"
+msgstr ""
+
+#: templates/about-us.php:322
+msgid "Загальне"
+msgstr ""
+
+#: templates/about-us.php:331
+msgid "Напишіть ваше повідомлення..."
+msgstr ""
+
+#: templates/about-us.php:334
+msgid "Використано символів 0/500"
+msgstr ""
+
+#. Template Name of the theme
+msgid "Boost Ad"
+msgstr ""
+
+#: templates/ad-boost.php:49 templates/ad-create.php:294
+msgid "Давайте завершимо!"
+msgstr ""
+
+#: templates/ad-boost.php:50 templates/ad-create.php:297
+msgid "Це найкращий вибір для Вас"
+msgstr ""
+
+#: templates/ad-boost.php:55 templates/ad-create.php:304
+msgid "Платіжні дані"
+msgstr ""
+
+#: templates/ad-boost.php:62
+msgid "Швидкий <span class=\"tag label-text\">Найпопулярніший</span>"
+msgstr ""
+
+#: templates/ad-boost.php:63 templates/ad-boost.php:69
+#: templates/ad-create.php:255 templates/ad-create.php:313
+#: templates/ad-create.php:319
+msgid "90,00 грн"
+msgstr ""
+
+#: templates/ad-boost.php:66 templates/ad-create.php:259
+#: templates/ad-create.php:273 templates/ad-create.php:316
+msgid "Переваги"
+msgstr ""
+
+#: templates/ad-boost.php:67 templates/ad-create.php:261
+#: templates/ad-create.php:317
+msgid "Підняття в топ протягом 30ти днів, що в рази пришвидшить продаж"
+msgstr ""
+
+#: templates/ad-boost.php:69 templates/ad-create.php:319
+msgid "Загальна сума оплати"
+msgstr ""
+
+#: templates/ad-boost.php:70 templates/ad-create.php:320
+msgid "Оплатити рекламу"
+msgstr ""
+
+#: templates/ad-boost.php:77
+msgid "Ваше оголошення успішно рекламується!"
+msgstr ""
+
+#: templates/ad-boost.php:78 templates/ad-create.php:329
+msgid ""
+"Ви можете переглянути всі ваші оголошення перейшовши по пункту меню “Мої "
+"оголошення”"
+msgstr ""
+
+#: templates/ad-boost.php:82 templates/ad-create.php:333
+msgid "Повернутись на Головну сторінку"
+msgstr ""
+
+#: templates/ad-boost.php:83 templates/ad-create.php:334
+msgid "Переглянути Мої оголошення"
+msgstr ""
+
+#. Template Name of the theme
+msgid "Create an Ad"
+msgstr ""
+
+#: templates/ad-create.php:40 templates/ad-edit.php:102
+msgid "Опишіть ваше оголошення"
+msgstr ""
+
+#: templates/ad-create.php:45 templates/ad-edit.php:107
+msgid "Назвіть ваше оголошення"
+msgstr ""
+
+#: templates/ad-create.php:46 templates/ad-edit.php:108
+msgid "Назва оголошення"
+msgstr ""
+
+#: templates/ad-create.php:49 templates/ad-create.php:135
+#: templates/ad-edit.php:211
+msgid "Використано символів"
+msgstr ""
+
+#: templates/ad-create.php:54 templates/ad-edit.php:117
+msgid "Укажіть регіон/місто"
+msgstr ""
+
+#: templates/ad-create.php:55 templates/ad-edit.php:118
+msgid "Регіон оголошення"
+msgstr ""
+
+#: templates/ad-create.php:63 templates/ad-create.php:167
+#: templates/ad-edit.php:138 templates/ad-edit.php:249
+msgid "Виберіть категорію"
+msgstr ""
+
+#: templates/ad-create.php:65 templates/ad-edit.php:140
+msgid "Виберіть зі списку"
+msgstr ""
+
+#: templates/ad-create.php:71 templates/ad-edit.php:147
+msgid "Виберіть тип оголошення"
+msgstr ""
+
+#: templates/ad-create.php:73 templates/ad-create.php:76
+#: templates/ad-edit.php:152
+msgid "Продаж"
+msgstr ""
+
+#: templates/ad-create.php:77 templates/ad-edit.php:153
+msgid "Купівля"
+msgstr ""
+
+#: templates/ad-create.php:78 templates/ad-edit.php:154
+msgid "Оренда"
+msgstr ""
+
+#: templates/ad-create.php:90 templates/ad-edit.php:166
+msgid "Вартість"
+msgstr ""
+
+#: templates/ad-create.php:96 templates/ad-edit.php:172
+msgid "Валюта"
+msgstr ""
+
+#: templates/ad-create.php:97 templates/ad-create.php:100
+#: templates/ad-edit.php:176
+msgid "грн"
+msgstr ""
+
+#: templates/ad-create.php:101
+msgid "$"
+msgstr ""
+
+#: templates/ad-create.php:111 templates/ad-edit.php:187
+msgid "Стан"
+msgstr ""
+
+#: templates/ad-create.php:116 templates/ad-edit.php:192
+msgid "Новий"
+msgstr ""
+
+#: templates/ad-create.php:120 templates/ad-edit.php:196
+msgid "Вживаний"
+msgstr ""
+
+#: templates/ad-create.php:130 templates/ad-edit.php:206
+msgid "Опис"
+msgstr ""
+
+#: templates/ad-create.php:132 templates/ad-edit.php:208
+msgid "Напишіть щось круте..."
+msgstr ""
+
+#: templates/ad-create.php:140 templates/ad-edit.php:216
+msgid "Фото"
+msgstr ""
+
+#: templates/ad-create.php:141
+msgid "(Підтримується файли до 5 МБ у форматі JPEG, PNG.)"
+msgstr ""
+
+#: templates/ad-create.php:158
+msgid "Опублікувати"
+msgstr ""
+
+#: templates/ad-create.php:223 templates/ad-edit.php:343
+msgid "Відміна"
+msgstr ""
+
+#: templates/ad-create.php:226 templates/ad-edit.php:346
+msgid "Вибрати"
+msgstr ""
+
+#: templates/ad-create.php:241
+msgid "Рекламуй та швидко продавай"
+msgstr ""
+
+#: templates/ad-create.php:244
+msgid "Вибери спосіб реклами який тобі найбільше підходить"
+msgstr ""
+
+#: templates/ad-create.php:251
+msgid "Швидко продаю"
+msgstr ""
+
+#: templates/ad-create.php:252 templates/ad-create.php:312
+msgid "Найпопулярніший"
+msgstr ""
+
+#: templates/ad-create.php:267
+msgid "Безкоштовно"
+msgstr ""
+
+#: templates/ad-create.php:269
+msgid "0,00 грн"
+msgstr ""
+
+#: templates/ad-create.php:275
+msgid ""
+"Розміщення оголошення на платформі та долучення до найбільшого в Україні "
+"агро комюніті. Ми раді допомогти вам розвивати вашу справу)"
+msgstr ""
+
+#: templates/ad-create.php:284 templates/forgot-password.php:35
+msgid "Назад"
+msgstr ""
+
+#: templates/ad-create.php:287
+msgid "Продовжити"
+msgstr ""
+
+#: templates/ad-create.php:312
+msgid "Швидкий"
+msgstr ""
+
+#: templates/ad-create.php:321
+msgid "Пропустити оплату"
+msgstr ""
+
+#: templates/ad-create.php:328
+msgid "Ваше оголошення успішно додане"
+msgstr ""
+
+#. Template Name of the theme
+msgid "Edit Ad"
+msgstr ""
+
+#: templates/ad-edit.php:99
+msgid "Редагування оголошення"
+msgstr ""
+
+#: templates/ad-edit.php:112
+msgid "Використано символів 0/100"
+msgstr ""
+
+#: templates/ad-edit.php:216
+msgid "(Підтримуються файли до 5 МБ у форматі JPEG, PNG.)"
+msgstr ""
+
+#: templates/ad-edit.php:242
+msgid "Опублікувати зміни"
+msgstr ""
+
+#. Template Name of the theme
+msgid "Admin Page S3"
+msgstr ""
+
+#. Template Name of the theme
+msgid "Author Ad"
+msgstr ""
+
+#: templates/author-ad.php:19
+msgid "Інші оголошення автора"
+msgstr ""
+
+#. Template Name of the theme
+msgid "Forgot Password"
+msgstr ""
+
+#: templates/forgot-password.php:17
+msgid ""
+"Будь ласка, введіть адресу електронної пошти, пов’язану з вашим акаунтом, і "
+"ми надішлемо вам посилання для скидання пароля."
+msgstr ""
+
+#: templates/forgot-password.php:26
+msgid "Надіслати запит"
+msgstr ""
+
+#: templates/forgot-password.php:29 templates/register.php:95
+msgid "Повернутися до входу"
+msgstr ""
+
+#: templates/forgot-password.php:33 templates/register.php:93
+msgid "Перевірте свою електронну пошту!"
+msgstr ""
+
+#: templates/forgot-password.php:34
+msgid ""
+"Будь ласка, відкрийте лист і натисніть на посилання, щоб завершити процес "
+"відновлення паролю. Зверніть увагу, що лист може надійти з затримкою до 15 "
+"хвилин. Якщо ви не отримали його, перевірте папку \"Спам\" або спробуйте ще "
+"раз."
+msgstr ""
+
+#. Template Name of the theme
+msgid "Homepage"
+msgstr ""
+
+#: templates/homepage.php:17
+msgid "Перший Український онлайн базар"
+msgstr ""
+
+#: templates/homepage.php:18
+msgid "Продавай. Купуй. Орендуй. Господарюй!"
+msgstr ""
+
+#. Template Name of the theme
+msgid "Login"
+msgstr ""
+
+#: templates/login.php:14
+msgid "Увійти до PanTerrea"
+msgstr ""
+
+#: templates/login.php:17
+msgid "Новий користувач?"
+msgstr ""
+
+#: templates/login.php:19 templates/register.php:80
+msgid "Створити акаунт"
+msgstr ""
+
+#: templates/login.php:31 templates/login.php:32
+msgid "Пароль до PanTerrea"
+msgstr ""
+
+#: templates/login.php:40 templates/register.php:16
+msgid "Увійти"
+msgstr ""
+
+#. Template Name of the theme
+msgid "Register"
+msgstr ""
+
+#: templates/register.php:14
+msgid "Спробуйте абсолютно безкоштовно"
+msgstr ""
+
+#: templates/register.php:15
+msgid "Вже є акаунт?"
+msgstr ""
+
+#: templates/register.php:40
+msgid "Введіть прізвище та ім’я або назву підприємства."
+msgstr ""
+
+#: templates/register.php:46
+msgid "Місто проживання (Або місце реєстрації підприємства)"
+msgstr ""
+
+#: templates/register.php:48 templates/user-profile.php:76
+#: templates/user-profile.php:111 templates/user-profile.php:112
+msgid "Місто проживання"
+msgstr ""
+
+#: templates/register.php:49
+msgid "Або місце реєстрації підприємства"
+msgstr ""
+
+#: templates/register.php:63 templates/register.php:64
+#: templates/user-profile.php:84 templates/user-profile.php:123
+#: templates/user-profile.php:124
+msgid "Контактний номер"
+msgstr ""
+
+#: templates/register.php:70 templates/register.php:71
+msgid "Створити пароль"
+msgstr ""
+
+#: templates/register.php:75 templates/reset-password.php:69
+msgid "Пароль має містити 8 знаків, велика буква, мала буква і символ."
+msgstr ""
+
+#: templates/register.php:84
+msgid "Реєструючись, я погоджуюсь з"
+msgstr ""
+
+#: templates/register.php:85
+msgid "Умовами користування"
+msgstr ""
+
+#: templates/register.php:86
+msgid "та"
+msgstr ""
+
+#: templates/register.php:87
+msgid "Політикою конфіденційності"
+msgstr ""
+
+#: templates/register.php:94
+msgid ""
+"Будь ласка, відкрийте лист і натисніть на посилання, щоб завершити процес "
+"реєстрації. Зверніть увагу, що лист може надійти з затримкою до 15 хвилин. "
+"Якщо ви не отримали його, перевірте папку \"Спам\" або спробуйте ще раз."
+msgstr ""
+
+#. Template Name of the theme
+msgid "Reset Password"
+msgstr ""
+
+#: templates/reset-password.php:24
+msgid "Невірне або відсутнє посилання для скидання паролю"
+msgstr ""
+
+#: templates/reset-password.php:33
+msgid "Невірний токен для скидання паролю"
+msgstr ""
+
+#: templates/reset-password.php:39
+msgid "Час сплинув"
+msgstr ""
+
+#: templates/reset-password.php:46
+msgid "Введіть новий пароль"
+msgstr ""
+
+#: templates/reset-password.php:48
+msgid ""
+"Ваш пароль має містити щонайменше одну велику літеру, одну малу літеру, один "
+"спеціальний символ та бути довжиною щонайменше 8 символів."
+msgstr ""
+
+#: templates/reset-password.php:57 templates/reset-password.php:58
+#: templates/user-profile.php:150 templates/user-profile.php:151
+msgid "Новий пароль"
+msgstr ""
+
+#: templates/reset-password.php:65 templates/reset-password.php:66
+msgid "Підтвердіть пароль"
+msgstr ""
+
+#. Template Name of the theme
+msgid "Search"
+msgstr ""
+
+#. Template Name of the theme
+msgid "User Ad"
+msgstr ""
+
+#: templates/user-ad.php:89
+msgid "Активні"
+msgstr ""
+
+#: templates/user-ad.php:97
+msgid "Неактивні"
+msgstr ""
+
+#: templates/user-ad.php:115 templates/user-ad.php:136
+msgid "У вас немає активних оголошень"
+msgstr ""
+
+#. Template Name of the theme
+msgid "User Favorites"
+msgstr ""
+
+#: templates/user-favorites.php:37 templates/user-favorites.php:59
+msgid "Обрані оголошення"
+msgstr ""
+
+#: templates/user-favorites.php:60
+msgid "У вас немає вибраних оголошень"
+msgstr ""
+
+#. Template Name of the theme
+msgid "User Messages"
+msgstr ""
+
+#: templates/user-messages.php:104
+msgid "Оголошення було видалено"
+msgstr ""
+
+#: templates/user-messages.php:122
+msgid "Розблокувати"
+msgstr ""
+
+#: templates/user-messages.php:122
+msgid "Заблокувати"
+msgstr ""
+
+#: templates/user-messages.php:141 templates/user-messages.php:148
+msgid "У вас немає повідомлень"
+msgstr ""
+
+#: templates/user-messages.php:169
+msgid "Ви дійсно хочете заблокувати чат?"
+msgstr ""
+
+#: templates/user-messages.php:170
+msgid "Ви не будете отримувати повідомлень від цього користувача"
+msgstr ""
+
+#: templates/user-messages.php:172
+msgid "Так, блокувати"
+msgstr ""
+
+#: templates/user-messages.php:187
+msgid "Ви дійсно хочете видалити повідомлення?"
+msgstr ""
+
+#: templates/user-messages.php:188
+msgid "Повідомлення буде видалено назавжди"
+msgstr ""
+
+#. Template Name of the theme
+msgid "User Profile"
+msgstr ""
+
+#: templates/user-profile.php:39
+msgid "Основна інформація"
+msgstr ""
+
+#: templates/user-profile.php:45
+msgid "Зміна паролю"
+msgstr ""
+
+#: templates/user-profile.php:54
+msgid "Налаштування сповіщень"
+msgstr ""
+
+#: templates/user-profile.php:80
+msgid "не верифіковано"
+msgstr ""
+
+#: templates/user-profile.php:91
+msgid "Верифікувати пошту"
+msgstr ""
+
+#: templates/user-profile.php:131
+msgid "Зберегти"
+msgstr ""
+
+#: templates/user-profile.php:143 templates/user-profile.php:144
+msgid "Існуючий пароль"
+msgstr ""
+
+#: templates/user-profile.php:158 templates/user-profile.php:159
+msgid "Підтвердьте новий пароль"
+msgstr ""
+
+#: templates/user-profile.php:171
+msgid "Сповіщення платформи"
+msgstr ""
+
+#: templates/user-profile.php:172
+msgid "Тут ви можете налаштувати, які сповіщення хочете отримувати"
+msgstr ""
+
+#: templates/user-profile.php:201
+msgid "Email-сповіщення типу \"%s\""
+msgstr ""
+
+msgid "Форум"
+msgstr ""
+
+msgid "Показати мої"
+msgstr ""
+
+msgid "Ваш браузер не підтримує відео."
+msgstr ""
+
+msgid "Коментувати..."
+msgstr ""
+
+msgid "Коментувати"
+msgstr ""
+
+msgid "Показати всі коментарі"
+msgstr ""
+
+msgid "Прикріпити"
+msgstr ""
+
+msgid "Пост не знайдено."
+msgstr ""
+
+msgid "Стрічка поки що пуста. Ви можете бути першим!"
+msgstr ""
+
+msgid "Ви дійсно хочете видалити публікацію?"
+msgstr ""
+
+msgid "Публікація буде видалена назавжди"
+msgstr ""
+
+msgid "Ви дійсно хочете видалити коментар?"
+msgstr ""
+
+msgid "Коментар буде видалена назавжди"
+msgstr ""
+
+msgid "Відповісти"
+msgstr ""

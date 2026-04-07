@@ -1,0 +1,48 @@
+@use '../abstracts/variables.scss' as *;
+
+.boostPage{
+
+  &__inner{
+    padding: 80px 0 135px;
+
+    &.hidden{
+      display: none;
+    }
+  }
+
+  &__title{
+    color: $text_primary;
+    margin-bottom: 16px;
+    text-align: center;
+  }
+
+  &__subtitle{
+    color: $text_secondary;
+    margin-bottom: 40px;
+    text-align: center;
+  }
+
+  &__innerSuccess{
+    padding: 80px 0 135px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+
+    &.hidden{
+      display: none;
+    }
+
+    img{
+      margin: 80px 0;
+    }
+
+    .btn{
+      min-width: 294px;
+      margin-bottom: 12px;
+
+      &:last-child{
+        margin-bottom: 0;
+      }
+    }
+  }
+}

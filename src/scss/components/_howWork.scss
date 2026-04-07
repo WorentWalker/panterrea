@@ -1,0 +1,133 @@
+@use '../abstracts/variables.scss' as *;
+
+.howWork{
+
+  .container{
+    max-width: 758px;
+  }
+
+  &__inner{
+    padding: 80px 0;
+
+    @media (max-width: 659px) {
+      padding: 60px 0;
+    }
+  }
+
+  &__title{
+    color: $text_primary;
+    text-align: center;
+    margin-bottom: 12px;
+  }
+
+  &__info{
+    color: $bg_hovered;
+    text-align: center;
+    margin-bottom: 12px;
+  }
+
+  &__tabs{
+    display: flex;
+    flex-direction: column;
+    gap: 40px;
+    align-items: center;
+
+    &__titles{
+      position: relative;
+      display: flex;
+      gap: 40px;
+      padding: 13px 0;
+
+      &:after{
+        content: "";
+        position: absolute;
+        left: 0;
+        bottom: 0;
+        width: 100%;
+        height: 2px;
+        background-color: rgba(145, 158, 171, 0.08);
+      }
+    }
+
+    &__title{
+      position: relative;
+      color: $text_secondary;
+      cursor: pointer;
+
+      &:hover{
+        color: $primary_main;
+
+        &:after{
+          content: "";
+          position: absolute;
+          left: 0;
+          bottom: -13px;
+          width: 100%;
+          height: 2px;
+          background-color: $primary_main;
+        }
+      }
+
+      &.active{
+        color: $primary_main;
+        cursor: default;
+
+        &:after{
+          content: "";
+          position: absolute;
+          left: 0;
+          bottom: -13px;
+          width: 100%;
+          height: 2px;
+          background-color: $primary_main;
+        }
+      }
+    }
+
+    &__content{
+      display: none;
+      flex-direction: column;
+      gap: 24px;
+
+      &.active{
+        display: flex;
+      }
+    }
+
+    &__item{
+      display: flex;
+      padding: 24px;
+      align-items: center;
+      gap: 0 8px;
+      flex-wrap: wrap;
+      border-radius: 16px;
+      background-color: $white;
+      box-shadow: 0 0 2px 0 rgba(145, 158, 171, 0.20), 0 12px 24px -4px rgba(145, 158, 171, 0.12);
+
+      img{
+        width: 48px;
+        height: 48px;
+        object-fit: cover;
+      }
+
+      &__title{
+        width: calc(100% - 56px);
+        color: $black;
+      }
+
+      &__info{
+        width: 100%;
+        color: $text_secondary;
+        padding: 0 56px;
+
+        @media (max-width: 659px) {
+          padding: 0 0 0 56px;
+        }
+
+        @media (max-width: 350px) {
+          padding: 0 0 0 10px;
+        }
+      }
+    }
+  }
+}

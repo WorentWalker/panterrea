@@ -1,0 +1,117 @@
+@use '../abstracts/variables.scss' as *;
+
+.dropdown{
+  padding: 6px 0;
+  border-radius: 12px;
+  background: $white;
+  box-shadow: 0 0 2px 0 rgba(145, 158, 171, 0.24), -20px 20px 40px -4px rgba(145, 158, 171, 0.24);
+  display: flex;
+  flex-direction: column;
+
+  &__item{
+    padding: 0 16px;
+    display: flex;
+    align-items: center;
+    height: 40px;
+  }
+
+  input{
+    display: none;
+
+    & + label{
+      position: relative;
+      cursor: pointer;
+      padding-left: 40px;
+      user-select: none;
+      color: $text_primary;
+
+      &::before {
+        content: "";
+        position: absolute;
+        left: 0;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 23px;
+        height: 23px;
+        border: 1px solid $primary_main;
+        background-color: #fff;
+        box-sizing: border-box;
+      }
+
+      span{
+        display: inline-block;
+        width: max-content;
+      }
+    }
+
+    &:checked{
+
+      & + label{
+
+        &:after {
+          content: "";
+          position: absolute;
+        }
+      }
+    }
+
+    &[type='checkbox']{
+
+      & + label{
+
+        &::before {
+          border-radius: 4px;
+        }
+      }
+
+      &:checked{
+
+        & + label{
+
+          &:before{
+            background-color: $primary_main;
+            border-color: $primary_main;
+          }
+
+          &:after {
+            left: 8px;
+            top: 44%;
+            transform: translateY(-50%) rotate(45deg);
+            width: 6px;
+            height: 10px;
+            border: solid #fff;
+            border-width: 0 2px 2px 0;
+          }
+        }
+      }
+
+    }
+
+    &[type='radio']{
+
+      & + label{
+
+        &::before {
+          border-radius: 50%;
+        }
+      }
+
+      &:checked{
+
+        & + label{
+
+          &:after {
+            left: 5px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 13px;
+            height: 13px;
+            background-color: #147575;
+            border-radius: 50%;
+          }
+        }
+      }
+
+    }
+  }
+}

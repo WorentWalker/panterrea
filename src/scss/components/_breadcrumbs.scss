@@ -1,0 +1,67 @@
+@use '../abstracts/variables.scss' as *;
+
+.breadcrumbs {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+
+  @media (max-width: 560px) {
+    gap: 8px;
+  }
+
+  &__home {
+    display: flex;
+
+    svg {
+      fill: $black_100;
+    }
+
+    &:hover {
+
+      svg {
+        fill: $primary_main;
+      }
+    }
+  }
+
+  &__title {
+    color: $text_disabled;
+    cursor: default;
+
+    @media (max-width: 560px) {
+      display: none;
+    }
+  }
+
+  &__link {
+    color: $text_primary;
+
+    &:last-of-type{
+
+      & + .separator {
+
+        @media (max-width: 560px) {
+          display: none;
+        }
+      }
+    }
+  }
+
+  .separator {
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background-color: $text_disabled;
+
+    // Hide separator after last element
+    &:last-child {
+      display: none;
+    }
+  }
+
+  // Hide separator after title
+  &__title + .separator {
+    display: none;
+  }
+
+}

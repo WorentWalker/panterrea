@@ -1,0 +1,213 @@
+@use '../abstracts/variables.scss' as *;
+
+@font-face {
+  font-family: 'Montserrat';
+  src: url('../fonts/Montserrat/Montserrat-Medium.ttf');
+  font-display: fallback;
+  font-weight: 500;
+}
+
+@font-face {
+  font-family: 'Montserrat';
+  src: url('../fonts/Montserrat/Montserrat-SemiBold.ttf');
+  font-display: fallback;
+  font-weight: 600;
+}
+
+@font-face {
+  font-family: 'Montserrat';
+  src: url('../fonts/Montserrat/Montserrat-Bold.ttf');
+  font-display: fallback;
+  font-weight: 700;
+}
+
+@font-face {
+  font-family: 'PublicSans';
+  src: url('../fonts/Public_Sans/PublicSans-Bold.ttf');
+  font-display: fallback;
+  font-weight: 700;
+}
+
+@font-face {
+  font-family: 'Roboto';
+  src: url('../fonts/Roboto/Roboto-Regular.ttf');
+  font-display: fallback;
+  font-weight: 400;
+}
+
+@font-face {
+  font-family: 'Roboto';
+  src: url('../fonts/Roboto/Roboto-Bold.ttf');
+  font-display: fallback;
+  font-weight: 700;
+}
+
+h1,h2,h3,h4,h5,h6,p{
+  margin: 0;
+}
+
+body {
+  color: $text_primary;
+  font-family: $font_roboto;
+  font-weight: 400;
+  font-size: 16px;
+  line-height: 24px;
+}
+
+.h1 {
+  font-family: $font_montserrat;
+  font-size: 64px;
+  font-style: normal;
+  font-weight: 700;
+  line-height: 80px;
+}
+
+.h2 {
+  font-family: $font_montserrat;
+  font-size: 48px;
+  font-style: normal;
+  font-weight: 700;
+  line-height: 64px;
+}
+
+.h3{
+  font-family: $font_montserrat;
+  font-size: 32px;
+  font-style: normal;
+  font-weight: 700;
+  line-height: 48px;
+
+  @media (max-width: 414px) {
+    font-size: 28px;
+    line-height: 40px;
+  }
+}
+
+.h4{
+  font-family: $font_montserrat;
+  font-size: 24px;
+  font-style: normal;
+  font-weight: 700;
+  line-height: 36px;
+}
+
+.h5{
+  font-family: $font_montserrat;
+  font-size: 20px;
+  font-style: normal;
+  font-weight: 700;
+  line-height: 30px;
+}
+
+.h6{
+  font-family: $font_montserrat;
+  font-size: 18px;
+  font-style: normal;
+  font-weight: 700;
+  line-height: 28px;
+}
+
+.subtitle1{
+  font-family: $font_roboto;
+  font-size: 16px;
+  font-style: normal;
+  font-weight: 600;
+  line-height: 24px;
+}
+
+.subtitle2{
+  font-family: $font_roboto;
+  font-size: 14px;
+  font-style: normal;
+  font-weight: 600;
+  line-height: 22px;
+}
+
+.body1{
+  font-family: $font_roboto;
+  font-size: 16px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 24px;
+}
+
+.body2{
+  font-family: $font_roboto;
+  font-size: 14px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 22px
+}
+
+.caption{
+  font-family: $font_roboto;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 18px;
+}
+
+.overline{
+  font-family: $font_roboto;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 700;
+  line-height: 18px;
+  text-transform: uppercase;
+}
+
+.input-label{
+  font-family: $font_roboto;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 500;
+  line-height: 18px;
+}
+
+.table-head{
+  font-family: $font_roboto;
+  font-size: 14px;
+  font-style: normal;
+  font-weight: 600;
+  line-height: 24px;
+}
+
+.button-large{
+  font-family: $font_roboto;
+  font-size: 15px;
+  font-style: normal;
+  font-weight: 700;
+  line-height: 26px;
+}
+
+.label-text{
+  font-family: $font_roboto;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 700;
+  line-height: 20px;
+}
+
+.button-medium{
+  font-family: $font_roboto;
+  font-size: 14px;
+  font-style: normal;
+  font-weight: 700;
+  line-height: 24px;
+}
+
+.button-small{
+  font-family: $font_roboto;
+  font-size: 13px;
+  font-style: normal;
+  font-weight: 700;
+  line-height: 22px;
+}
+
+.chip-label{
+  font-family: $font_roboto;
+  font-size: 13px;
+  font-style: normal;
+  font-weight: 500;
+  line-height: 18px;
+}

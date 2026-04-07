@@ -1,0 +1,330 @@
+@use '../abstracts/variables.scss' as *;
+
+.userMessages{
+  padding-bottom: 100px;
+
+  @media (max-width: 1023px) {
+    padding-bottom: 20px;
+  }
+
+  &__inner{
+    padding: 42px 0 62px;
+  }
+
+  &__title{
+    margin: 2px 0 24px;
+  }
+
+  &__wrapper{
+    margin-top: 40px;
+    height: 700px;
+    padding: 0 40px 0;
+    border-radius: 16px;
+    background: $grey-100;
+    display: flex;
+    gap: 18px;
+
+    @media (max-width: 1023px) {
+      height: unset;
+    }
+
+    @media (max-width: 560px) {
+      padding: 0 16px 0;
+    }
+  }
+
+  &__chatList{
+    width: 448px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    height: 700px;
+    overflow-y: auto;
+    padding: 40px 8px 40px 0;
+
+    @media (max-width: 1023px) {
+      height: unset;
+      width: 100%;
+    }
+
+    @media (max-width: 560px) {
+      padding: 16px 8px 16px 0;
+    }
+
+    &::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    &::-webkit-scrollbar-track {
+      margin: 52px 0;
+      background: transparent;
+    }
+
+    &::-webkit-scrollbar-thumb {
+      border-radius: 12px;
+      background: rgba(99, 115, 129, 0.48);
+    }
+
+    &.hidden{
+      display: none;
+    }
+  }
+
+  &__chatAd{
+    $chatAd: &;
+
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    height: 104px;
+    padding: 10px;
+    border-radius: 16px;
+    background: $white;
+    border: 2px solid $white;
+
+    @media (max-width: 1023px) {
+      height: unset;
+    }
+
+    img{
+      border-radius: 12px;
+      width: 80px;
+      height: 80px;
+      object-fit: cover;
+    }
+
+    &__info{
+      width: calc(100% - 136px);
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    &__title{
+      color: $black_100;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      width: 100%;
+    }
+
+    &__price{
+      color: $black_100;
+    }
+
+    &__options{
+      position: relative;
+      width: 24px;
+      height: 24px;
+      background-image: url("../svg/icon_chat_options.svg");
+      background-size: cover;
+    }
+
+    &__optionsList{
+      position: absolute;
+      top: 33px;
+      right: -4px;
+      padding: 4px 0;
+      border-radius: 12px;
+      background-color: $white;
+      box-shadow: 0 0 2px 0 rgba(145, 158, 171, 0.24), -20px 20px 40px -4px rgba(145, 158, 171, 0.24);
+      z-index: 2;
+
+      &.hidden{
+        display: none;
+      }
+    }
+
+    &:last-of-type{
+      #{$chatAd}__optionsList{
+        top: unset;
+        bottom: 33px;
+      }
+    }
+
+    &:only-of-type {
+      #{$chatAd}__optionsList {
+        top: 33px;
+        bottom: unset;
+      }
+    }
+
+    &.blocked{
+
+      img{
+        opacity: 0.5;
+      }
+
+      #{$chatAd}__info{
+        opacity: 0.5;
+      }
+
+      #{$chatAd}__title{
+        opacity: 0.5;
+      }
+
+      #{$chatAd}__price{
+        opacity: 0.5;
+      }
+    }
+
+    &.deleted{
+      padding: 20px 10px;
+      justify-content: space-between;
+
+      &.new{
+        &:after{
+          left: 10px;
+        }
+      }
+    }
+
+    &__option{
+      display: flex;
+      align-items: center;
+      height: 48px;
+      padding: 0 16px;
+      gap: 8px;
+      cursor: pointer;
+      white-space: nowrap;
+
+      &:before{
+        content: "";
+        width: 24px;
+        height: 24px;
+      }
+
+      &.block{
+        color: $black_100;
+
+        &:before{
+          background-image: url("../svg/icon_chat_options_block.svg");
+          background-size: cover;
+        }
+      }
+
+      &.link{
+        color: $black_100;
+
+        &:before{
+          background-image: url("../svg/icon_chat_options_link.svg");
+          background-size: cover;
+        }
+      }
+
+      &.delete{
+        color: $error_main;
+
+        &:before{
+          background-image: url("../svg/icon_chat_options_delete.svg");
+          background-size: cover;
+        }
+      }
+    }
+
+    &:hover{
+      background: $global_default_bg;
+      cursor: pointer;
+    }
+
+    &.active{
+      background: $global_default_bg;
+      border-radius: 16px;
+      border: 2px solid $primary_main;
+      background: $white;
+    }
+
+    &__empty{
+      display: flex;
+      height: 100%;
+      align-items: center;
+      margin: 0 auto;
+
+      &.hidden{
+        display: none;
+      }
+    }
+
+    &.new{
+
+      &:after{
+        content: "Нове";
+        position: absolute;
+        top: 4px;
+        left: 55px;
+        min-width: 20px;
+        height: 20px;
+        padding: 0 6px;
+        border-radius: 12px;
+        background: $primary_green;
+        border: 1px solid $white;
+        color: $white;
+        font-size: 12px;
+        font-weight: bold;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 0 0 1px rgba(0,0,0,0.1);
+      }
+    }
+
+    &.new-en{
+      &:after{
+        content: "New";
+      }
+
+    }
+  }
+
+  &__chatBlock{
+    width: calc(100% - 466px);
+    margin-top: 40px;
+    height: 620px;
+
+    @media (max-width: 1023px) {
+      margin-top: 0;
+      width: 70vw;
+      height: min(80dvh, 80vh);
+      position: fixed;
+      right: 16px;
+      top: 16px;
+      z-index: 999;
+    }
+
+    @media (max-width: 767px) {
+      width: 90vw;
+    }
+
+    &.hidden{
+      display: none;
+    }
+  }
+
+  .chat{
+
+    &__header{
+
+      &__close{
+        display: none;
+
+        @media (max-width: 1023px) {
+          margin-left: 20px;
+          display: block;
+        }
+
+        @media (max-width: 560px) {
+          margin-left: auto;
+        }
+      }
+
+      &__link{
+
+        @media (max-width: 560px) {
+          display: none;
+        }
+      }
+    }
+  }
+
+}

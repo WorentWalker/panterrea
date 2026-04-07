@@ -1,0 +1,265 @@
+@use '../abstracts/variables.scss' as *;
+
+.catalog {
+  position: relative;
+  border-radius: 80px;
+  background: $white;
+  z-index: 1;
+
+  @media (max-width: 1365px) {
+    border-radius: 40px;
+  }
+
+  @media (max-width: 414px) {
+    border-radius: 30px;
+  }
+
+  &__inner{
+    padding: 40px 0 40px;
+  }
+
+  &__header{
+    margin-bottom: 40px;
+
+    @media (max-width: 659px) {
+      margin-bottom: 24px;
+    }
+  }
+
+  &__title{
+    margin: 0 0 12px;
+    color: $text_primary;
+
+    @media (max-width: 414px) {
+      text-align: center;
+    }
+  }
+
+  &__subtitle{
+    margin: 0;
+    color: $text_primary;
+    opacity: 0.8;
+
+    @media (max-width: 414px) {
+      text-align: center;
+    }
+  }
+
+  &__searchTitle{
+    margin: 40px 0 0;
+    color: $text_primary;
+  }
+
+  &__filters{
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+
+    @media (max-width: 659px) {
+      gap: 8px;
+    }
+  }
+
+  &__filter{
+    padding: 10px 24px;
+    color: $primary_main;
+    border-radius: 40px;
+    border: 1px solid $lighter_darker_primary;
+    cursor: pointer;
+    transition: .2s;
+
+    @media (max-width: 659px) {
+      padding: 8px 14px;
+    }
+
+    &:hover{
+      color: $white;
+      font-weight: 700;
+      background-color: $primary_main;
+      border: 1px solid $primary_main;
+    }
+
+    &.active{
+      color: $white;
+      font-weight: 700;
+      background-color: $primary_main;
+      border: 1px solid $primary_main;
+      cursor: default;
+    }
+  }
+
+  &__items{
+    margin-top: 40px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 32px 24px;
+
+    @media (max-width: 1023px) {
+      gap: 32px 21px;
+    }
+
+    @media (max-width: 659px) {
+      gap: 24px 24px;
+    }
+
+    @media (max-width: 560px) {
+      gap: 16px 16px;
+    }
+
+    /* AJAX response wraps items in div[data-catalog-count] - make it transparent for flex */
+    > [data-catalog-count] {
+      display: contents;
+    }
+  }
+
+  &__navigation{
+    display: flex;
+    gap: 24px;
+    align-items: center;
+    justify-content: space-between;
+
+    @media (max-width: 1023px) {
+      flex-direction: column;
+      align-items: start;
+    }
+
+    &__inner{
+      display: flex;
+      align-items: center;
+    }
+
+    .breadcrumbs__title {
+      @media (max-width: 560px) {
+        display: block;
+      }
+    }
+  }
+
+  &__tagsFilter{
+    display: flex;
+    align-items: center;
+
+    @media (max-width: 1023px) {
+      align-items: flex-start;
+    }
+
+    @media (max-width: 560px) {
+      flex-wrap: wrap;
+    }
+
+    &__actives{
+      margin-right: 40px;
+
+      @media (max-width: 1023px) {
+        order: 3;
+        margin: 0 0 0 24px;
+        max-width: calc(100% - 114px);
+      }
+
+      @media (max-width: 560px) {
+        max-width: 100%;
+        margin: 12px 0 0 0;
+      }
+    }
+  }
+
+  &__dropdown{
+    $dropdown: &;
+    position: relative;
+
+    @media (max-width: 1023px) {
+      order: 1;
+    }
+
+    &__title{
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      height: 36px;
+      padding: 0 8px;
+
+      &:after{
+        content: '';
+        width: 20px;
+        height: 20px;
+        background-position: center;
+        background-repeat: no-repeat;
+        background-size: cover;
+      }
+
+      &.tagsDrop{
+        &:after{
+          background-image: url("../svg/icon_tags_filter.svg");
+        }
+      }
+
+      &.sortDrop{
+        &:after{
+          background-image: url("../svg/icon_sort_filter.svg");
+        }
+      }
+    }
+
+    &__list{
+      display: none;
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 2;
+    }
+
+    &:hover{
+
+      #{$dropdown}__list{
+        display: flex;
+      }
+    }
+  }
+
+  &__sort{
+
+    @media (max-width: 1023px) {
+      order: 2;
+    }
+
+    .dropdown{
+      @media (max-width: 375px) {
+        left: 20%;
+      }
+    }
+  }
+
+  &__tagActive{
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: end;
+
+    @media (max-width: 1023px) {
+      justify-content: start;
+    }
+
+    &__item{
+      height: 32px;
+      padding: 7px 8px 7px 12px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      border-radius: 8px;
+      color: $text_primary;
+      background: rgba(145, 158, 171, 0.12);
+    }
+
+    &__close{
+      width: 20px;
+      height: 20px;
+      background-image: url("../svg/icon_tags_close.svg");
+      background-position: center;
+      background-repeat: no-repeat;
+      background-size: cover;
+      cursor: pointer;
+    }
+  }
+}

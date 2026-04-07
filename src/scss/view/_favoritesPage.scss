@@ -1,0 +1,19 @@
+@use '../abstracts/variables.scss' as *;
+
+.favoritesPage{
+
+  .catalog__title{
+    margin-top: 0;
+  }
+
+  .emptyFolder{
+
+    &__inner{
+      padding-bottom: 100px;
+    }
+    &__content{
+      min-height: 619px;
+    }
+  }
+
+}
