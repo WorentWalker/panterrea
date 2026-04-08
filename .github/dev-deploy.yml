@@ -1,0 +1,28 @@
+name: Deploy to Dev Server
+
+on:
+  push:
+    branches:
+      - dev
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Selective Deployment
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: 'dev'
+
+      - name: Set up SSH
+        uses: webfactory/ssh-agent@v0.7.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Copy specific directories
+        run: |
+          # Copy sources to dev
+          rsync -avz --progress ./*  bitnami@3.79.239.99:/opt/bitnami/wordpress/wp-content/themes/Panterrea/
