@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - dev
+      - main
   workflow_dispatch:
 
 jobs:
@@ -14,8 +15,6 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        with:
-          ref: 'dev'
 
       - name: Set up SSH
         uses: webfactory/ssh-agent@v0.7.0
@@ -24,5 +23,14 @@ jobs:
 
       - name: Copy specific directories
         run: |
-          # Copy sources to dev
-          rsync -avz --progress -e "ssh -o StrictHostKeyChecking=no" ./*  bitnami@3.79.239.99:/opt/bitnami/wordpress/wp-content/themes/Panterrea/
+          # Copy sources to remote
+          
+          if [[ "${{ github.ref_name }}" == "main" ]]; then
+            echo "Deploying to PRODUCTION"
+            SERVER="63.176.10.235"
+          elif [[ "${{ github.ref_name }}" == "dev" ]]; then
+            echo "Deploying to DEV"
+            SERVER="3.79.239.99"
+          fi
+          
+          rsync -avz --progress -e "ssh -o StrictHostKeyChecking=no" ./*  bitnami@$SERVER:/opt/bitnami/wordpress/wp-content/themes/Panterrea/
