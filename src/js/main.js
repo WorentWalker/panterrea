@@ -50,6 +50,8 @@ function markNotificationsAsRead() {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
+  console.log("walker");
+
   class Panterrea {
     static checkNotificationFromCookies() {
       const type = getCookie("message_type");
