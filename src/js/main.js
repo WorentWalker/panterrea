@@ -50,26 +50,6 @@ function markNotificationsAsRead() {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-  console.log("walker");
-
-  const walkerTestBadge = document.createElement("div");
-  walkerTestBadge.textContent = "WALKER TEST";
-  walkerTestBadge.setAttribute("id", "walker-test-badge");
-  walkerTestBadge.style.position = "fixed";
-  walkerTestBadge.style.right = "16px";
-  walkerTestBadge.style.bottom = "16px";
-  walkerTestBadge.style.padding = "10px 14px";
-  walkerTestBadge.style.background = "#ff2d55";
-  walkerTestBadge.style.color = "#ffffff";
-  walkerTestBadge.style.fontWeight = "700";
-  walkerTestBadge.style.fontSize = "12px";
-  walkerTestBadge.style.letterSpacing = "0.06em";
-  walkerTestBadge.style.borderRadius = "8px";
-  walkerTestBadge.style.zIndex = "99999";
-  walkerTestBadge.style.boxShadow = "0 8px 24px rgba(0,0,0,0.25)";
-  walkerTestBadge.style.pointerEvents = "none";
-  document.body.appendChild(walkerTestBadge);
-
   class Panterrea {
     static checkNotificationFromCookies() {
       const type = getCookie("message_type");

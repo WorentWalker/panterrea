@@ -16,16 +16,22 @@ $replies = get_comments([
 ]);
 
 $is_comment_author = $comment->user_id && (int) $comment->user_id === (int) $current_user_id;
+$author_name = get_comment_author($comment);
 ?>
 
 <div class="forum__itemPost__comment <?= esc_attr($extra_class); ?>" data-comment-id="<?= esc_attr($comment->comment_ID); ?>">
     <div class="forum__itemPost__comment__header">
-        <div class="forum__itemPost__comment__info">
-            <div class="forum__itemPost__comment__author subtitle2">
-                <?= esc_html(get_comment_author($comment)); ?>
+        <div class="forum__itemPost__comment__meta">
+            <div class="forum__itemPost__comment__avatar">
+                <?= get_avatar($comment, 40, '', esc_attr($author_name), ['class' => 'forum__itemPost__comment__avatarImg']); ?>
             </div>
-            <div class="forum__itemPost__comment__date caption">
-                <?= esc_html(get_comment_date('d.m.Y', $comment)); ?>
+            <div class="forum__itemPost__comment__info">
+                <div class="forum__itemPost__comment__author subtitle2">
+                    <?= esc_html($author_name); ?>
+                </div>
+                <div class="forum__itemPost__comment__date caption">
+                    <?= esc_html(get_comment_date('d.m.Y', $comment)); ?>
+                </div>
             </div>
         </div>
         <div class="forum__itemPost__comment__options">
