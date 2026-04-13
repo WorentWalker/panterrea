@@ -661,7 +661,9 @@ wp_enqueue_script('message', get_template_directory_uri() . '/src/js/message.js'
 $email_confirmed = is_user_logged_in() && get_user_meta(get_current_user_id(), 'email_verified', true);
 $post_id = is_singular('catalog_post') ? get_the_ID() : null;
 
-wp_enqueue_script('main', get_template_directory_uri() . '/src/js/main.js', null, '2025.07.16', true);
+$main_js_path = get_template_directory() . '/src/js/main.js';
+$main_js_version = file_exists($main_js_path) ? filemtime($main_js_path) : '2025.07.16';
+wp_enqueue_script('main', get_template_directory_uri() . '/src/js/main.js', null, $main_js_version, true);
 wp_localize_script('main', 'mainObject', [
 'ajax_url' => admin_url('admin-ajax.php'),
 'loggedIn' => is_user_logged_in() ? 'true' : 'false',
@@ -775,7 +777,9 @@ if (is_page_template($forumTemplates)) {
 wp_enqueue_style('quill-css', 'https://cdn.quilljs.com/1.3.6/quill.snow.css');
 wp_enqueue_script('quill-js', 'https://cdn.quilljs.com/1.3.6/quill.min.js', array(), null, true);
 
-wp_enqueue_script('forum', get_template_directory_uri() . '/src/js/forum.js', null, '2026.04.09', true);
+    $forum_js_path = get_template_directory() . '/src/js/forum.js';
+    $forum_js_version = file_exists($forum_js_path) ? filemtime($forum_js_path) : '2026.04.09';
+    wp_enqueue_script('forum', get_template_directory_uri() . '/src/js/forum.js', null, $forum_js_version, true);
 wp_localize_script('forum', 'forumObject', [
 'forum_nonce' => wp_create_nonce('forum_nonce'),
 'str_show_all' => __('Показати всі', 'panterrea_v1'),
