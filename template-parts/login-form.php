@@ -9,7 +9,8 @@
  * }
  */
 $args = wp_parse_args($args ?? [], [
-    'context' => 'login',
+    'context'  => 'login',
+    'redirect' => '',
 ]);
 $is_article = ($args['context'] === 'article');
 ?>
@@ -55,7 +56,9 @@ $is_article = ($args['context'] === 'article');
     </div>
 
     <form id="formLogin" class="form form__actionTemplate">
-        <?php if ($is_article && is_singular('post')) : ?>
+        <?php if (!empty($args['redirect'])) : ?>
+            <input type="hidden" name="redirect_to" value="<?php echo esc_url($args['redirect']); ?>" />
+        <?php elseif ($is_article && is_singular('post')) : ?>
             <input type="hidden" name="redirect_to" value="<?php echo esc_url(get_permalink()); ?>" />
         <?php endif; ?>
         <div class="input__form">

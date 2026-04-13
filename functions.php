@@ -18,6 +18,179 @@ define('URL_EDITAD', home_url('/edit-ad'));
 define('URL_BOOSTAD', home_url('/boost-ad'));
 define('URL_MESSAGES', home_url('/user-messages'));
 define('URL_FORUM', home_url('/forum'));
+
+/**
+ * Forum feed: sanitize category term IDs from request values.
+ *
+ * @param array<int|string> $ids
+ * @return int[]
+ */
+function panterrea_forum_sanitize_cat_ids($ids)
+{
+    $out = [];
+    foreach ((array) $ids as $id) {
+        $i = (int) $id;
+        if ($i > 0) {
+            $out[] = $i;
+        }
+    }
+
+    return array_values(array_unique($out));
+}
+
+/**
+ * @return int[]
+ */
+function panterrea_forum_get_cat_ids_from_request($request_key = 'forum_cat')
+{
+    if (empty($_GET[$request_key])) {
+        return [];
+    }
+    $raw = wp_unslash($_GET[$request_key]);
+    if (is_array($raw)) {
+        return panterrea_forum_sanitize_cat_ids($raw);
+    }
+
+    return panterrea_forum_sanitize_cat_ids(explode(',', (string) $raw));
+}
+
+/**
+ * @param int[] $cat_ids
+ * @return array<int, array<string, mixed>>
+ */
+function panterrea_forum_tax_query_for_categories(array $cat_ids)
+{
+    $cat_ids = panterrea_forum_sanitize_cat_ids($cat_ids);
+    if ($cat_ids === []) {
+        return [];
+    }
+
+    return [
+        [
+            'taxonomy' => 'category',
+            'field' => 'term_id',
+            'terms' => $cat_ids,
+            'operator' => 'IN',
+        ],
+    ];
+}
+
+/**
+ * @return int[]
+ */
+function panterrea_forum_cat_ids_from_post_param()
+{
+    if (empty($_POST['forum_cats'])) {
+        return [];
+    }
+    $raw = wp_unslash($_POST['forum_cats']);
+    if (!is_array($raw)) {
+        $raw = [$raw];
+    }
+
+    return panterrea_forum_sanitize_cat_ids($raw);
+}
+
+/**
+ * Forum list sort: all (chronological), popular, mine.
+ *
+ * @return string all|popular|mine
+ */
+function panterrea_forum_sanitize_sort($value)
+{
+    $value = is_string($value) ? strtolower(sanitize_key($value)) : '';
+    if ($value === 'popular') {
+        return 'popular';
+    }
+    if ($value === 'recent') {
+        return 'recent';
+    }
+    if ($value === 'mine' && is_user_logged_in()) {
+        return 'mine';
+    }
+
+    return 'all';
+}
+
+/**
+ * @return string all|popular|mine
+ */
+function panterrea_forum_get_sort_from_request()
+{
+    if (!empty($_GET['forum_sort'])) {
+        return panterrea_forum_sanitize_sort(wp_unslash($_GET['forum_sort']));
+    }
+    if (!empty($_GET['only_my']) && $_GET['only_my'] === '1' && is_user_logged_in()) {
+        return 'mine';
+    }
+
+    return 'all';
+}
+
+function panterrea_forum_sync_like_count($post_id)
+{
+    $post_id = (int) $post_id;
+    if ($post_id <= 0) {
+        return;
+    }
+    $likes = get_post_meta($post_id, '_forum_likes', true);
+    $likes = is_array($likes) ? $likes : [];
+    update_post_meta($post_id, '_forum_like_count', count($likes));
+}
+
+function panterrea_forum_get_like_count($post_id)
+{
+    $post_id = (int) $post_id;
+    $stored = get_post_meta($post_id, '_forum_like_count', true);
+    if ($stored !== '' && $stored !== false && $stored !== null) {
+        return (int) $stored;
+    }
+    $likes = get_post_meta($post_id, '_forum_likes', true);
+
+    return is_array($likes) ? count($likes) : 0;
+}
+
+/**
+ * ORDER BY likes meta, then comment_count, then date.
+ */
+function panterrea_forum_clauses_popular_sort($clauses, $query)
+{
+    if (empty($GLOBALS['panterrea_forum_popular_order'])) {
+        return $clauses;
+    }
+    if (!$query instanceof WP_Query) {
+        return $clauses;
+    }
+    global $wpdb;
+    $clauses['join'] .= " LEFT JOIN {$wpdb->postmeta} AS panterrea_flc ON ({$wpdb->posts}.ID = panterrea_flc.post_id AND panterrea_flc.meta_key = '_forum_like_count') ";
+    $clauses['orderby'] = 'COALESCE(CAST(panterrea_flc.meta_value AS UNSIGNED), 0) DESC, ' . $wpdb->posts . '.comment_count DESC, ' . $wpdb->posts . '.post_date DESC';
+
+    return $clauses;
+}
+add_filter('posts_clauses', 'panterrea_forum_clauses_popular_sort', 10, 2);
+
+/**
+ * Ensure the 8 forum categories exist on every request.
+ * Runs once per day via transient cache.
+ */
+function panterrea_ensure_forum_categories()
+{
+    if (get_transient('panterrea_forum_cats_created')) {
+        return;
+    }
+    $names = [
+        'ВРХ', 'Бізнес та партнерства', 'Ветеринарія', 'Відео',
+        'Досвід', 'Знання та аналітика', 'Свинарство', 'Утримання ВРХ',
+    ];
+    foreach ($names as $name) {
+        if (!get_cat_ID($name)) {
+            wp_insert_term($name, 'category');
+        }
+    }
+    set_transient('panterrea_forum_cats_created', 1, DAY_IN_SECONDS);
+}
+add_action('init', 'panterrea_ensure_forum_categories');
+
 define('EMAIL_TEMPLATE_CONFIRMATION', __DIR__ . '/template-emails/confirmation-email.php');
 define('EMAIL_TEMPLATE_RESETPASS', __DIR__ . '/template-emails/reset-password-email.php');
 define('EMAIL_TEMPLATE_NOTIFICATION', __DIR__ . '/template-emails/notification-email.php');
@@ -602,9 +775,13 @@ if (is_page_template($forumTemplates)) {
 wp_enqueue_style('quill-css', 'https://cdn.quilljs.com/1.3.6/quill.snow.css');
 wp_enqueue_script('quill-js', 'https://cdn.quilljs.com/1.3.6/quill.min.js', array(), null, true);
 
-wp_enqueue_script('forum', get_template_directory_uri() . '/src/js/forum.js', null, '2025.07.16', true);
+wp_enqueue_script('forum', get_template_directory_uri() . '/src/js/forum.js', null, '2026.04.09', true);
 wp_localize_script('forum', 'forumObject', [
-'forum_nonce' => wp_create_nonce('forum_nonce')
+'forum_nonce' => wp_create_nonce('forum_nonce'),
+'str_show_all' => __('Показати всі', 'panterrea_v1'),
+'str_hide' => __('Сховати', 'panterrea_v1'),
+'str_show_all_comments' => __('Показати всі', 'panterrea_v1'),
+'str_hide_comments' => __('Сховати', 'panterrea_v1'),
 ]);
 }
 });
@@ -2232,11 +2409,18 @@ $headers = [
 
             $formData = sanitize_form_data($formData);
 
+            $taxonomy = 'catalog_category';
+            $categoryExists = false;
+            $categoryIdFromRequest = isset($formData['adCategoryId']) ? (int)$formData['adCategoryId'] : 0;
+            if ($categoryIdFromRequest > 0) {
+            $categoryExists = term_exists($categoryIdFromRequest, $taxonomy);
+            }
+            if (!$categoryExists) {
             $rawCategory = $formData['adCategory'];
             $categoryParts = explode(' / ', $rawCategory);
             $lastCategory = trim(end($categoryParts));
-            $taxonomy = 'catalog_category';
             $categoryExists = term_exists($lastCategory, $taxonomy);
+            }
             if (!$categoryExists) {
             wp_send_json_error(['message' => 'Обрана категорія не існує.']);
             }
@@ -2457,11 +2641,18 @@ $headers = [
 
             $formData = sanitize_form_data($formData);
 
+            $taxonomy = 'catalog_category';
+            $categoryExists = false;
+            $categoryIdFromRequest = isset($formData['adCategoryId']) ? (int)$formData['adCategoryId'] : 0;
+            if ($categoryIdFromRequest > 0) {
+            $categoryExists = term_exists($categoryIdFromRequest, $taxonomy);
+            }
+            if (!$categoryExists) {
             $rawCategory = $formData['adCategory'];
             $categoryParts = explode(' / ', $rawCategory);
             $lastCategory = trim(end($categoryParts));
-            $taxonomy = 'catalog_category';
             $categoryExists = term_exists($lastCategory, $taxonomy);
+            }
             if (!$categoryExists) {
             wp_send_json_error(['message' => 'Обрана категорія не існує.']);
             }
@@ -4433,6 +4624,18 @@ $headers = [
                     }
 
                     update_post_meta($postId, '_is_forum_post', 1);
+                    update_post_meta($postId, '_forum_like_count', 0);
+
+                    $raw_cat_ids = [];
+                    if (!empty($_POST['post_category_ids']) && is_array($_POST['post_category_ids'])) {
+                        $raw_cat_ids = array_map('intval', $_POST['post_category_ids']);
+                    } elseif (!empty($_POST['post_category_id'])) {
+                        $raw_cat_ids = [(int) $_POST['post_category_id']];
+                    }
+                    $valid_cat_ids = array_filter($raw_cat_ids, fn($id) => $id > 0 && term_exists($id, 'category'));
+                    if (!empty($valid_cat_ids)) {
+                        wp_set_post_terms($postId, array_values($valid_cat_ids), 'category');
+                    }
 
                     wp_send_json_success(['message' => 'Пост успішно створено.', 'postId' => $postId]);
                     }
@@ -4466,6 +4669,13 @@ $headers = [
 
                     $paged = isset($_POST['page']) ? intval($_POST['page']) : 1;
 
+                    $sort = 'all';
+                    if (!empty($_POST['forum_sort'])) {
+                    $sort = panterrea_forum_sanitize_sort(sanitize_key(wp_unslash($_POST['forum_sort'])));
+                    } elseif (isset($_POST['only_my']) && $_POST['only_my'] == '1' && is_user_logged_in()) {
+                    $sort = 'mine';
+                    }
+
                     $args = [
                     'post_type' => 'post',
                     'posts_per_page' => 10,
@@ -4481,11 +4691,23 @@ $headers = [
                     ],
                     ];
 
-                    if (isset($_POST['only_my']) && $_POST['only_my'] == '1' && is_user_logged_in()) {
+                    if ($sort === 'mine' && is_user_logged_in()) {
                     $args['author'] = get_current_user_id();
                     }
 
+                    $forum_cat_ids = panterrea_forum_cat_ids_from_post_param();
+                    $tax_q = panterrea_forum_tax_query_for_categories($forum_cat_ids);
+                    if ($tax_q !== []) {
+                    $args['tax_query'] = $tax_q;
+                    }
+
+                    if ($sort === 'popular') {
+                    $GLOBALS['panterrea_forum_popular_order'] = true;
+                    }
+
                     $query = new WP_Query($args);
+
+                    unset($GLOBALS['panterrea_forum_popular_order']);
 
                     if ($query->have_posts()) :
                     while ($query->have_posts()) : $query->the_post();
@@ -4709,6 +4931,17 @@ $headers = [
                     update_field('field_682a380147e78', [], $postId);
                     }
 
+                    $raw_cat_ids_edit = [];
+                    if (!empty($_POST['post_category_ids']) && is_array($_POST['post_category_ids'])) {
+                        $raw_cat_ids_edit = array_map('intval', $_POST['post_category_ids']);
+                    } elseif (!empty($_POST['post_category_id'])) {
+                        $raw_cat_ids_edit = [(int) $_POST['post_category_id']];
+                    }
+                    $valid_cat_ids_edit = array_filter($raw_cat_ids_edit, fn($id) => $id > 0 && term_exists($id, 'category'));
+                    if (!empty($valid_cat_ids_edit)) {
+                        wp_set_post_terms($postId, array_values($valid_cat_ids_edit), 'category');
+                    }
+
                     wp_send_json_success(['message' => 'Пост успішно оновлено.', 'postId' => $postId]);
                     }
 
@@ -4757,7 +4990,11 @@ $headers = [
                     $comment = get_comment($comment_id);
 
                     ob_start();
-                    get_template_part('template-parts/comment-item', null, ['comment' => $comment]);
+                    get_template_part('template-parts/comment-item', null, [
+                    'comment' => $comment,
+                    'current_user_id' => get_current_user_id(),
+                    'extra_class' => '',
+                    ]);
                     $comment_html = ob_get_clean();
 
                     wp_send_json_success([
@@ -4847,6 +5084,7 @@ $headers = [
                     }
 
                     add_action('wp_ajax_search_forum_posts', 'search_forum_posts_callback');
+                    add_action('wp_ajax_nopriv_search_forum_posts', 'search_forum_posts_callback');
 
                     function search_forum_posts_callback() {
                     $security = sanitize_text_field($_POST['security']);
@@ -4855,9 +5093,14 @@ $headers = [
                     }
 
                     $query = isset($_POST['query']) ? sanitize_text_field($_POST['query']) : '';
-                    $only_my = isset($_POST['only_my']) && $_POST['only_my'] == '1';
-
                     $current_user_id = get_current_user_id();
+
+                    $sort = 'all';
+                    if (!empty($_POST['forum_sort'])) {
+                    $sort = panterrea_forum_sanitize_sort(sanitize_key(wp_unslash($_POST['forum_sort'])));
+                    } elseif (isset($_POST['only_my']) && $_POST['only_my'] == '1' && $current_user_id) {
+                    $sort = 'mine';
+                    }
 
                     // Normalize and stem the query for Ukrainian language support
                     $query_normalized = normalize_ukrainian_keyboard($query);
@@ -4875,8 +5118,14 @@ $headers = [
                     ],
                     ];
 
-                    if ($only_my && $current_user_id) {
+                    if ($sort === 'mine' && $current_user_id) {
                     $args['author'] = $current_user_id;
+                    }
+
+                    $forum_cat_ids = panterrea_forum_cat_ids_from_post_param();
+                    $tax_q = panterrea_forum_tax_query_for_categories($forum_cat_ids);
+                    if ($tax_q !== []) {
+                    $args['tax_query'] = $tax_q;
                     }
 
                     $posts = new WP_Query($args);
@@ -4884,9 +5133,9 @@ $headers = [
                     ob_start();
 
                     if ($posts->have_posts()) {
-                    $found_any = false;
                     $query_lower = mb_strtolower($query_normalized, 'UTF-8');
                     $stem_lower = mb_strtolower($query_stem, 'UTF-8');
+                    $matching_ids = [];
 
                     while ($posts->have_posts()) {
                     $posts->the_post();
@@ -4896,30 +5145,55 @@ $headers = [
                     $post_content = mb_strtolower(get_the_content(), 'UTF-8');
                     $post_title = mb_strtolower(get_the_title(), 'UTF-8');
 
-                    // Check for exact match, partial match, or stem match
                     $matches = false;
-                    
-                    // Exact or partial match in content, title, or author
-                    if (mb_stripos($post_content, $query_lower) !== false || 
+
+                    if (mb_stripos($post_content, $query_lower) !== false ||
                         mb_stripos($post_title, $query_lower) !== false ||
                         mb_stripos($post_author_name, $query_lower) !== false) {
-                        $matches = true;
+                    $matches = true;
                     }
-                    
-                    // Stem match for grammatical forms
+
                     if (!$matches && mb_strlen($stem_lower, 'UTF-8') >= 3) {
-                        if (mb_stripos($post_content, $stem_lower) !== false || 
-                            mb_stripos($post_title, $stem_lower) !== false) {
-                            $matches = true;
-                        }
+                    if (mb_stripos($post_content, $stem_lower) !== false ||
+                        mb_stripos($post_title, $stem_lower) !== false) {
+                    $matches = true;
+                    }
                     }
 
                     if ($matches) {
-                    get_template_part('template-parts/forum-item');
-                    $found_any = true;
+                    $matching_ids[] = get_the_ID();
                     }
                     }
 
+                    wp_reset_postdata();
+
+                    if ($sort === 'popular' && $matching_ids !== []) {
+                    usort($matching_ids, static function ($a, $b) {
+                    $la = panterrea_forum_get_like_count($a);
+                    $lb = panterrea_forum_get_like_count($b);
+                    if ($la !== $lb) {
+                    return $lb <=> $la;
+                    }
+                    $ca = (int) get_comments_number($a);
+                    $cb = (int) get_comments_number($b);
+                    if ($ca !== $cb) {
+                    return $cb <=> $ca;
+                    }
+
+                    return strtotime((string) get_post_field('post_date', $b)) <=> strtotime((string) get_post_field('post_date', $a));
+                    });
+                    }
+
+                    $found_any = false;
+                    foreach ($matching_ids as $pid) {
+                    $post_obj = get_post($pid);
+                    if (!$post_obj) {
+                    continue;
+                    }
+                    setup_postdata($post_obj);
+                    get_template_part('template-parts/forum-item');
+                    $found_any = true;
+                    }
                     wp_reset_postdata();
 
                     if (!$found_any) {
@@ -4961,6 +5235,7 @@ $headers = [
                     }
 
                     update_post_meta($post_id, '_forum_likes', array_values($likes));
+                    panterrea_forum_sync_like_count($post_id);
 
                     wp_send_json_success([
                     'liked' => $liked,
@@ -5240,3 +5515,13 @@ $headers = [
                         }
                         return $term_link;
                         }
+
+add_action('init', function () {
+    $term = get_term_by('name', 'Uncategorized', 'category');
+    if ($term && ! is_wp_error($term)) {
+        wp_update_term($term->term_id, 'category', [
+            'name' => 'Без категорії',
+            'slug' => 'bez-katehorii',
+        ]);
+    }
+});

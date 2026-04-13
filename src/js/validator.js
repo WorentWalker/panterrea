@@ -210,7 +210,7 @@ const NOT_VALID_CLASS = "notValid";
 
 function updateFieldValidationState(input, isValid, errorMessage = "") {
   const inputWrapper = input.closest(
-    ".input__form, .input__formAd, .input__formTextarea"
+    ".input__form, .input__formAd, .input__formTextarea",
   );
 
   if (!inputWrapper) {
@@ -250,7 +250,7 @@ function initializeFormValidation(form, formData, inputs) {
       for (const field in fieldsToValidate) {
         const isValidField = validator.validate(
           { [field]: fieldsToValidate[field] },
-          formData
+          formData,
         );
         const errors = validator.getErrors();
         validationResults[field] = {
@@ -271,6 +271,10 @@ function initializeFormValidation(form, formData, inputs) {
 }
 
 function displayValidationErrors(errors, inputs = []) {
+  if (!errors || typeof errors !== "object") {
+    return;
+  }
+
   const errorCount = Object.keys(errors).length;
 
   if (inputs.length > 0) {
@@ -293,7 +297,7 @@ function displayValidationErrors(errors, inputs = []) {
   if (errorCount > 1) {
     MessageSystem.showMessage(
       "warning",
-      getTranslatedText("validation_failed")
+      getTranslatedText("validation_failed"),
     );
     /*MessageSystem.showMessage('warning', getTranslation('validation_failed'));*/
   } else if (errorCount === 1) {
@@ -334,7 +338,7 @@ document.addEventListener("DOMContentLoaded", () => {
       if (!turnstileToken || !turnstileToken.value) {
         MessageSystem.showMessage(
           "warning",
-          "Будь ласка, підтвердіть, що ви не робот."
+          "Будь ласка, підтвердіть, що ви не робот.",
         );
         return;
       }
@@ -363,13 +367,13 @@ document.addEventListener("DOMContentLoaded", () => {
             document.querySelector("#checkEmail").classList.remove("hidden");
             MessageSystem.showMessage(
               "success",
-              getTranslatedText("registration_success")
+              getTranslatedText("registration_success"),
             );
             /*MessageSystem.showMessage('success', getTranslation('registration_success'));*/
           } else {
             //console.error('Errors:', data.data.errors);
             displayValidationErrors(data.data.errors);
-            
+
             // Скидаємо Turnstile при помилці
             if (typeof turnstile !== "undefined") {
               const turnstileWidget = document.querySelector(".cf-turnstile");
@@ -382,7 +386,7 @@ document.addEventListener("DOMContentLoaded", () => {
         })
         .catch((error) => {
           //console.error('Request error:', error.message);
-          
+
           // Скидаємо Turnstile при помилці запиту
           if (typeof turnstile !== "undefined") {
             const turnstileWidget = document.querySelector(".cf-turnstile");
@@ -400,7 +404,7 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   const resendButton = document.querySelector(
-    ".actionTemplate__resend span#resendEmail"
+    ".actionTemplate__resend span#resendEmail",
   );
   const resendButtonText = resendButton.innerText;
 
@@ -426,7 +430,7 @@ document.addEventListener("DOMContentLoaded", () => {
           if (data.success) {
             MessageSystem.showMessage(
               "info",
-              getTranslatedText("email_resent")
+              getTranslatedText("email_resent"),
             );
             /*MessageSystem.showMessage('info', getTranslation('email_resent'));*/
             //console.log('The email was successfully resent.');
@@ -485,7 +489,7 @@ document.addEventListener("DOMContentLoaded", () => {
             setMessageCookies(
               "success",
               getTranslatedText("login_success"),
-              60
+              60,
             );
             /*setMessageCookies('success', getTranslation('login_success'), 60);*/
             window.location.href = data.data.redirect_url || "/";
@@ -558,7 +562,7 @@ function handleSocialLogin(provider) {
       } else {
         console.error(
           "Social login error:",
-          data.data?.message || "Unknown error"
+          data.data?.message || "Unknown error",
         );
         alert(data.data?.message || "Помилка входу через соціальну мережу");
       }
@@ -616,7 +620,7 @@ document.addEventListener("DOMContentLoaded", () => {
             formContainer.classList.add("hidden");
             MessageSystem.showMessage(
               "success",
-              getTranslatedText("password_change_request_success")
+              getTranslatedText("password_change_request_success"),
             );
             /*MessageSystem.showMessage('success', getTranslation('password_change_request_success'));*/
             document.querySelector("#checkEmail").classList.remove("hidden");
@@ -636,7 +640,7 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   const resendButton = document.querySelector(
-    ".actionTemplate__resend span#resendEmail"
+    ".actionTemplate__resend span#resendEmail",
   );
   const resendButtonText = resendButton.innerText;
 
@@ -662,7 +666,7 @@ document.addEventListener("DOMContentLoaded", () => {
           if (data.success) {
             MessageSystem.showMessage(
               "info",
-              getTranslatedText("email_resent")
+              getTranslatedText("email_resent"),
             );
             /*MessageSystem.showMessage('info', getTranslation('email_resent'));*/
             //console.log('The email was successfully resent.');
@@ -721,7 +725,7 @@ document.addEventListener("DOMContentLoaded", () => {
             setMessageCookies(
               "success",
               getTranslatedText("password_reset_success"),
-              60
+              60,
             );
             /*setMessageCookies('success', getTranslation('password_reset_success'), 60);*/
             window.location.href = data.redirect_url || "/";
@@ -812,7 +816,7 @@ document.addEventListener("DOMContentLoaded", () => {
             setMessageCookies(
               "success",
               getTranslatedText("main_info_updated_success"),
-              60
+              60,
             );
             /*setMessageCookies('success', getTranslation('main_info_updated_success'), 60);*/
             window.location.reload();
@@ -858,7 +862,7 @@ document.addEventListener("DOMContentLoaded", () => {
           if (data.success) {
             MessageSystem.showMessage(
               "info",
-              getTranslatedText("email_resent")
+              getTranslatedText("email_resent"),
             );
             /*MessageSystem.showMessage('info', getTranslation('email_resent'));*/
             //console.log('The email was successfully resent.');
@@ -915,7 +919,7 @@ document.addEventListener("DOMContentLoaded", () => {
             form.reset();
             MessageSystem.showMessage(
               "success",
-              getTranslatedText("password_updated_successfully")
+              getTranslatedText("password_updated_successfully"),
             );
             /*MessageSystem.showMessage('success', getTranslation('password_updated_successfully'));*/
           } else {
@@ -974,6 +978,19 @@ document.addEventListener("DOMContentLoaded", () => {
         formData[input.name] = input.value.trim();
       }
     });
+
+    const adCategoryInput = form.querySelector("#adCategory");
+    if (adCategoryInput) {
+      const selectedCategoryId =
+        adCategoryInput.dataset.subcategoryId ||
+        adCategoryInput.dataset.categoryId ||
+        "";
+      if (selectedCategoryId) {
+        formData.adCategoryId = selectedCategoryId;
+      } else {
+        delete formData.adCategoryId;
+      }
+    }
   }
 
   const previewContainer = document.getElementById("previewContainer");
@@ -992,7 +1009,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 ${
                   index === 0
                     ? `<div class="main-label body2">${getTranslatedText(
-                        "main_label"
+                        "main_label",
                       )}</div>`
                     : ""
                 }
@@ -1049,7 +1066,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (file.size > 5 * 1024 * 1024) {
       MessageSystem.showMessage(
         "warning",
-        getTranslatedText("file_size_limit")
+        getTranslatedText("file_size_limit"),
       );
       /*MessageSystem.showMessage('warning', getTranslation('file_size_limit'));*/
       return;
@@ -1059,7 +1076,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!supportedFormats.includes(file.type)) {
       MessageSystem.showMessage(
         "warning",
-        getTranslatedText("unsupported_file_format")
+        getTranslatedText("unsupported_file_format"),
       );
       /*MessageSystem.showMessage('warning', getTranslation('unsupported_file_format'));*/
       return;
@@ -1146,7 +1163,14 @@ document.addEventListener("DOMContentLoaded", () => {
               window.scrollTo(0, 0);
             }
           } else {
-            displayValidationErrors(data.data.errors);
+            if (data?.data?.errors && typeof data.data.errors === "object") {
+              displayValidationErrors(data.data.errors);
+            } else {
+              MessageSystem.showMessage(
+                "error",
+                data?.data?.message || getTranslatedText("error_generic")
+              );
+            }
           }
         })
         .catch((error) => {
@@ -1233,6 +1257,19 @@ document.addEventListener("DOMContentLoaded", () => {
         formData[input.name] = value;
       }
     });
+
+    const adCategoryInput = form.querySelector("#adCategory");
+    if (adCategoryInput) {
+      const selectedCategoryId =
+        adCategoryInput.dataset.subcategoryId ||
+        adCategoryInput.dataset.categoryId ||
+        "";
+      if (selectedCategoryId) {
+        formData.adCategoryId = selectedCategoryId;
+      } else {
+        delete formData.adCategoryId;
+      }
+    }
   }
 
   const previewContainer = document.getElementById("previewContainer");
@@ -1255,7 +1292,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 ${
                   index === 0
                     ? `<div class="main-label body2">${getTranslatedText(
-                        "main_label"
+                        "main_label",
                       )}</div>`
                     : ""
                 }
@@ -1312,7 +1349,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (file.size > 5 * 1024 * 1024) {
       MessageSystem.showMessage(
         "warning",
-        getTranslatedText("file_size_limit")
+        getTranslatedText("file_size_limit"),
       );
       /*MessageSystem.showMessage('warning', getTranslation('file_size_limit'));*/
       return;
@@ -1322,7 +1359,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!supportedFormats.includes(file.type)) {
       MessageSystem.showMessage(
         "warning",
-        getTranslatedText("unsupported_file_format")
+        getTranslatedText("unsupported_file_format"),
       );
       /*MessageSystem.showMessage('warning', getTranslation('unsupported_file_format'));*/
       return;
@@ -1397,12 +1434,19 @@ document.addEventListener("DOMContentLoaded", () => {
             setMessageCookies(
               "success",
               getTranslatedText("announcement_edited"),
-              60
+              60,
             );
             /*setMessageCookies('success', getTranslation('announcement_edited'), 60);*/
             window.location.href = data.data.postUrl;
           } else {
-            displayValidationErrors(data.data.errors);
+            if (data?.data?.errors && typeof data.data.errors === "object") {
+              displayValidationErrors(data.data.errors);
+            } else {
+              MessageSystem.showMessage(
+                "error",
+                data?.data?.message || getTranslatedText("error_generic")
+              );
+            }
           }
         })
         .catch((error) => {
@@ -1489,7 +1533,7 @@ document.addEventListener("DOMContentLoaded", () => {
             form.reset();
             MessageSystem.showMessage(
               "success",
-              getTranslatedText("email_sent")
+              getTranslatedText("email_sent"),
             );
             /*MessageSystem.showMessage('success', getTranslation('email_sent'));*/
           } else {

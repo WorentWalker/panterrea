@@ -1,0 +1,1 @@
+<input type="checkbox" id="category-gardening" class="js-catalogFilter" data-category="gardening" data-category-url="http://localhost:10058/catalog/gardening/" checked="checked">
