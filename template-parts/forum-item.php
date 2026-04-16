@@ -62,14 +62,14 @@ $top_count = count($top_level_comments);
             $is_last_visible = ($i === 1 && $total > 2);
             $remaining = $total - 2;
         ?>
-        <div class="forum__itemPost__mediaItem js-forumSlider">
+        <div class="forum__itemPost__mediaItem js-forumSlider" data-index="<?php echo $i; ?>">
             <?php if (str_starts_with($type, 'image')) : ?>
-                <img src="<?php echo esc_url($url); ?>" alt="">
+                <img src="<?php echo esc_url($url); ?>" alt="" loading="lazy">
             <?php elseif (str_starts_with($type, 'video')) : ?>
-                <video controls>
-                    <source src="<?php echo esc_url($url); ?>" type="<?php echo esc_attr($type); ?>">
-                    <?php echo __('Ваш браузер не підтримує відео.', 'panterrea_v1'); ?>
+                <video preload="metadata">
+                    <source src="<?php echo esc_url($url); ?>#t=0.1" type="<?php echo esc_attr($type); ?>">
                 </video>
+                <div class="forum__itemPost__mediaPlay" aria-hidden="true"></div>
             <?php endif; ?>
             <?php if ($is_last_visible) : ?>
                 <div class="forum__itemPost__mediaOverlay h3">+<?php echo $remaining; ?></div>

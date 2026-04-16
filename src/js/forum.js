@@ -460,9 +460,49 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   }
 
+  function initForumPostContentClamps(root) {
+    const isEl = root && root.nodeType === 1;
+    const el = isEl ? root : document;
+    el.querySelectorAll(".forum__itemPost__content").forEach((content) => {
+      if (content.dataset.clampInit) return;
+      content.dataset.clampInit = "1";
+
+      content.classList.add("is-clamped");
+
+      if (content.scrollHeight <= content.clientHeight + 2) {
+        content.classList.remove("is-clamped");
+        return;
+      }
+
+      // Insert inline span at the end of the last paragraph (or content itself)
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "forum__itemPost__readMore";
+      btn.textContent = "Показати більше";
+
+      const lastP = content.querySelector("p:last-child") || content;
+      lastP.appendChild(document.createTextNode(" "));
+      lastP.appendChild(btn);
+
+      btn.addEventListener("click", () => {
+        const isCollapsed = content.classList.contains("is-clamped");
+        if (isCollapsed) {
+          content.classList.remove("is-clamped");
+          btn.textContent = "Приховати";
+        } else {
+          content.classList.add("is-clamped");
+          btn.textContent = "Показати більше";
+        }
+      });
+    });
+  }
+
   function scheduleInitForumUi(root) {
     requestAnimationFrame(() => {
-      requestAnimationFrame(() => initForumCommentClamps(root));
+      requestAnimationFrame(() => {
+        initForumCommentClamps(root);
+        initForumPostContentClamps(root);
+      });
     });
   }
 
@@ -599,12 +639,17 @@ document.addEventListener("DOMContentLoaded", function () {
       method: "POST",
       body: formData,
     })
-      .then((res) => res.text())
+      .then((res) => {
+        const hasMore = res.headers.get("X-Forum-Has-More");
+        if (hasMore !== null) {
+          hasMorePosts = hasMore === "1";
+        }
+        return res.text();
+      })
       .then((html) => {
         if (reset) {
           postsContainer.innerHTML = "";
           currentPage = 1;
-          hasMorePosts = true;
         }
 
         if (!html.trim()) {
@@ -675,29 +720,28 @@ document.addEventListener("DOMContentLoaded", function () {
   const forumCatAll = document.getElementById("forum-cat-all");
   if (forumCatAll) {
     forumCatAll.addEventListener("change", () => {
+      const allFilters = document.querySelectorAll(".forum__sidebar .js-forumCategoryFilter");
       if (forumCatAll.checked) {
-        document
-          .querySelectorAll(".forum__sidebar .js-forumCategoryFilter")
-          .forEach((cb) => {
-            cb.checked = false;
-          });
-        refreshForumFeed();
+        // Check all individual categories
+        allFilters.forEach((cb) => { cb.checked = true; });
       } else {
-        syncForumCategoryAllState();
-        refreshForumFeed();
+        // Uncheck all individual categories
+        allFilters.forEach((cb) => { cb.checked = false; });
       }
+      refreshForumFeed();
     });
   }
 
   document.querySelectorAll(".js-forumCategoryFilter").forEach((cb) => {
     cb.addEventListener("change", () => {
       const allBox = document.getElementById("forum-cat-all");
-      if (cb.checked && allBox) {
-        allBox.checked = false;
-      }
-      if (!cb.checked) {
-        syncForumCategoryAllState();
-      }
+      if (!allBox) { refreshForumFeed(); return; }
+      const allFilters = document.querySelectorAll(".forum__sidebar .js-forumCategoryFilter");
+      const allChecked = Array.from(allFilters).every((f) => f.checked);
+      const noneChecked = Array.from(allFilters).every((f) => !f.checked);
+      // "Всі" is checked when all individual boxes are checked or none are checked
+      allBox.checked = allChecked || noneChecked;
+      allBox.indeterminate = !allChecked && !noneChecked;
       refreshForumFeed();
     });
   });
@@ -728,11 +772,43 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   });
 
+  /* ── Mobile sidebar toggle ── */
+  const forumSidebar = document.querySelector(".forum__sidebar");
+  const forumFiltersToggle = document.querySelector(".js-forumFiltersToggle");
+  const forumFiltersHide = document.querySelectorAll(".js-forumFiltersHide");
+
+  function openForumSidebar() {
+    if (!forumSidebar) return;
+    forumSidebar.classList.add("is-open");
+    if (forumFiltersToggle) forumFiltersToggle.classList.add("is-active");
+  }
+  function closeForumSidebar() {
+    if (!forumSidebar) return;
+    forumSidebar.classList.remove("is-open");
+    if (forumFiltersToggle) forumFiltersToggle.classList.remove("is-active");
+  }
+
+  if (forumFiltersToggle) {
+    forumFiltersToggle.addEventListener("click", () => {
+      forumSidebar.classList.contains("is-open") ? closeForumSidebar() : openForumSidebar();
+    });
+  }
+  forumFiltersHide.forEach((btn) => btn.addEventListener("click", closeForumSidebar));
+
+  /* ── Search (mobile bar + sidebar share the same logic) ── */
+  function getActiveForumSearch() {
+    const all = document.querySelectorAll(".js-forumSearchInput");
+    for (const el of all) {
+      if (el.offsetParent !== null) return el;
+    }
+    return document.getElementById("searchInputForum") || all[0] || null;
+  }
+
   document
-    .querySelectorAll(".forum__sidebar__searchSubmit")
+    .querySelectorAll(".forum__sidebar__searchSubmit, .js-forumMobileSearchSubmit")
     .forEach((btn) => {
       btn.addEventListener("click", () => {
-        const si = document.getElementById("searchInputForum");
+        const si = getActiveForumSearch();
         if (!si) return;
         const query = si.value.trim();
         if (query === "") return;
@@ -740,10 +816,8 @@ document.addEventListener("DOMContentLoaded", function () {
       });
     });
 
-  const searchInput = document.getElementById("searchInputForum");
-
-  if (searchInput) {
-    searchInput.addEventListener("keydown", function (e) {
+  document.querySelectorAll(".js-forumSearchInput").forEach((input) => {
+    input.addEventListener("keydown", function (e) {
       if (e.key === "Enter") {
         e.preventDefault();
         const query = this.value.trim();
@@ -752,13 +826,13 @@ document.addEventListener("DOMContentLoaded", function () {
       }
     });
 
-    searchInput.addEventListener("input", function () {
+    input.addEventListener("input", function () {
       const query = this.value.trim();
       if (query === "") {
         refreshForumFeed();
       }
     });
-  }
+  });
 
   document.addEventListener("click", function (event) {
     const allOptionsLists = document.querySelectorAll(

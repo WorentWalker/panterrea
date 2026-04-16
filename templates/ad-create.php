@@ -33,8 +33,8 @@ get_header();
     <div class="container">
 
         <div id="stepInfo" class="adCreate__innerForm">
-            <div class="adCreate__innerForm__title h4"><?php _e('Створення оголошення', 'panterrea_v1'); ?></div>
             <?php catalog_breadcrumbs(); ?>
+            <div class="adCreate__innerForm__title h4"><?php _e('Створення оголошення', 'panterrea_v1'); ?></div>
 
             <div class="adCreate__form">
                 <div class="adCreate__form__title h6"><?php _e('Опишіть ваше оголошення', 'panterrea_v1'); ?></div>

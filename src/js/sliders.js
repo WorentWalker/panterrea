@@ -163,52 +163,77 @@ jQuery(document).ready(function ($) {
   }
 
   $(document).on("click", ".js-forumSlider", function () {
-    const $mediaContainer = $(this).closest(".forum__itemPost__media");
+    const $clicked = $(this);
+    const $mediaContainer = $clicked.closest(".forum__itemPost__media");
     const mediaData = $mediaContainer.data("media");
     const $popup = $("#mediaPopup");
     const $slider = $popup.find(".mediaSlider");
 
+    if (!mediaData || !mediaData.length) return;
+
+    // Determine start index from the clicked item's data-index attribute
+    const startIndex = parseInt($clicked.data("index") || 0, 10);
+
     if ($slider.hasClass("slick-initialized")) {
       $slider.slick("unslick");
     }
-
     $slider.html("");
 
-    if (mediaData && mediaData.length) {
-      mediaData.forEach((item) => {
-        const url = item.url || "";
-        const type = item.type || "";
-        if (type.startsWith("image")) {
-          $slider.append(`<div><img src="${url}" alt=""></div>`);
-        } else if (type.startsWith("video")) {
-          $slider.append(`
-                        <div>
-                            <video controls>
-                                <source src="${url}" type="${type}">
-                                Ваш браузер не підтримує відео.
-                            </video>
-                        </div>`);
-        }
-      });
+    mediaData.forEach((item) => {
+      const url = item.url || "";
+      const type = item.type || "";
+      if (type.startsWith("image")) {
+        $slider.append(`<div><img src="${url}" alt=""></div>`);
+      } else if (type.startsWith("video")) {
+        $slider.append(`
+          <div>
+            <video controls playsinline>
+              <source src="${url}" type="${type}">
+              Ваш браузер не підтримує відео.
+            </video>
+          </div>`);
+      }
+    });
 
-      $slider.slick({
-        arrows: true,
-        infinite: true,
-        prevArrow: $(".forum-slick-prev"),
-        nextArrow: $(".forum-slick-next"),
-      });
+    $slider.slick({
+      arrows: true,
+      infinite: true,
+      initialSlide: startIndex,
+      prevArrow: $(".forum-slick-prev"),
+      nextArrow: $(".forum-slick-next"),
+    });
 
-      $popup.fadeIn();
-      document.body.classList.add("noScroll");
-    }
+    // Pause all videos when changing slide
+    $slider.on("beforeChange", function () {
+      $slider.find("video").each(function () {
+        this.pause();
+      });
+    });
+
+    $popup.fadeIn();
+    document.body.classList.add("noScroll");
   });
 
-  $(".mediaPopup__close").on("click", function () {
+  function closeMediaPopup() {
     const $popup = $("#mediaPopup");
     const $slider = $popup.find(".mediaSlider");
+    // Stop any playing video before closing
+    $slider.find("video").each(function () { this.pause(); });
     $popup.fadeOut(() => {
-      $slider.slick("unslick").html("");
+      if ($slider.hasClass("slick-initialized")) {
+        $slider.slick("unslick");
+      }
+      $slider.html("");
       document.body.classList.remove("noScroll");
     });
+  }
+
+  $(".mediaPopup__close").on("click", closeMediaPopup);
+
+  // Close on backdrop click
+  $(document).on("click", "#mediaPopup", function (e) {
+    if ($(e.target).is("#mediaPopup")) {
+      closeMediaPopup();
+    }
   });
 });

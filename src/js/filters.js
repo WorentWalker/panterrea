@@ -107,20 +107,9 @@ function updateUrlFromFilters(replace = false) {
     DataFilter.priceMax < sliderMax ? DataFilter.priceMax : null;
   const noPrice = DataFilter.noPrice ? "1" : null;
 
-  let baseUrl;
-  const selectedCatEl = document.querySelector(
-    `.js-catalogFilter[data-category]:checked`,
-  );
-  if (selectedCatEl?.dataset.categoryUrl) {
-    baseUrl = selectedCatEl.dataset.categoryUrl;
-  } else if (category === "all" && filters.catalogBaseUrl) {
-    baseUrl = filters.catalogBaseUrl;
-  } else {
-    baseUrl =
-      window.location.origin + window.location.pathname ||
-      filters.catalogBaseUrl ||
-      window.location.origin + "/catalog";
-  }
+  // For multi-select always use the base catalog URL + query params
+  let baseUrl = filters.catalogBaseUrl ||
+    window.location.origin + "/catalog";
 
   const url = new URL(baseUrl);
   const setOrDelete = (key, val) => {
@@ -130,6 +119,7 @@ function updateUrlFromFilters(replace = false) {
       url.searchParams.delete(key);
     }
   };
+  setOrDelete(URL_PARAM_CATEGORY, category !== "all" ? category : null);
   setOrDelete(URL_PARAM_TAGS, tags);
   setOrDelete(URL_PARAM_SORT, sort);
   setOrDelete(URL_PARAM_PRICE_MIN, priceMin);
@@ -375,30 +365,33 @@ class CategoryFilter {
     const category = filter.getAttribute("data-category");
     if (!category) return;
 
-    let selectedCategory = category;
     if (filter.type === "checkbox") {
-      if (filter.checked) {
-        this.filters.forEach((f) => {
-          if (f !== filter) f.checked = false;
-        });
-        selectedCategory = category;
-      } else {
-        const allFilter = document.querySelector(
-          '.js-catalogFilter[data-category="all"]',
-        );
-        if (allFilter) {
-          allFilter.checked = true;
-          this.filters.forEach((f) => {
-            if (f !== allFilter) f.checked = false;
-          });
+      const allFilter = document.querySelector('.js-catalogFilter[data-category="all"]');
+      if (category === "all") {
+        if (filter.checked) {
+          this.filters.forEach((f) => { f.checked = true; });
+        } else {
+          this.filters.forEach((f) => { f.checked = false; });
         }
-        selectedCategory = "all";
+      } else {
+        const allChecked = Array.from(this.filters).filter(f => f.getAttribute("data-category") !== "all").every((f) => f.checked);
+        const noneChecked = Array.from(this.filters).filter(f => f.getAttribute("data-category") !== "all").every((f) => !f.checked);
+        if (allFilter) {
+          allFilter.checked = allChecked || noneChecked;
+          allFilter.indeterminate = !allChecked && !noneChecked;
+        }
       }
     } else {
       this.filters.forEach((f) => f.classList.remove("active"));
       filter.classList.add("active");
     }
 
+    // Collect all checked non-"all" categories
+    const checkedCats = Array.from(this.filters)
+      .filter(f => f.type === "checkbox" && f.checked && f.getAttribute("data-category") !== "all")
+      .map(f => f.getAttribute("data-category"));
+
+    const selectedCategory = checkedCats.length > 0 ? checkedCats.join(",") : "all";
     DataFilter.category = selectedCategory;
 
     fetchPosts(getFetchBody({ category: selectedCategory }))
@@ -438,18 +431,10 @@ class CatalogFilter {
     if (!this.postsContainer) return;
 
     this.tags.forEach((checkbox) => {
-      const savedValue = localStorage.getItem(checkbox.id);
-      if (savedValue !== null) {
-        checkbox.checked = savedValue === "true";
-      }
-
       checkbox.addEventListener("change", (e) =>
         this.handleTagsChange(e.target),
       );
     });
-
-    // Sync "Всі" vs specific: mutually exclusive (fix saved state)
-    this.syncTagsAllExclusivity();
 
     const savedSort = localStorage.getItem("sort");
     const defaultSortRadio = document.querySelector(
@@ -490,21 +475,22 @@ class CatalogFilter {
   }
 
   handleTagsChange(changedCheckbox) {
-    // "Всі" and specific options are mutually exclusive (e.g. ad_type)
     if (changedCheckbox) {
       const tagsAll = document.getElementById("tags-all");
-      if (changedCheckbox.id === "tags-all" && changedCheckbox.checked) {
-        // User selected "Всі" — uncheck all specific tags
-        this.tags.forEach((cb) => {
-          if (cb.id !== "tags-all") cb.checked = false;
-        });
-      } else if (
-        changedCheckbox.id !== "tags-all" &&
-        changedCheckbox.checked &&
-        tagsAll
-      ) {
-        // User selected a specific option — "Всі" cannot stay selected
-        tagsAll.checked = false;
+      if (changedCheckbox.id === "tags-all") {
+        if (changedCheckbox.checked) {
+          // "Всі" checked → check all specific tags
+          this.tags.forEach((cb) => { cb.checked = true; });
+        } else {
+          // "Всі" unchecked → uncheck all
+          this.tags.forEach((cb) => { cb.checked = false; });
+        }
+      } else if (tagsAll) {
+        // Individual tag toggled → sync "Всі" state
+        const allChecked = Array.from(this.tags).every((cb) => cb.checked);
+        const noneChecked = Array.from(this.tags).every((cb) => !cb.checked);
+        tagsAll.checked = allChecked || noneChecked;
+        tagsAll.indeterminate = !allChecked && !noneChecked;
       }
     }
 
@@ -613,52 +599,64 @@ class CatalogFilter {
       this.activeTagsContainer.appendChild(searchEl);
     }
 
-    if (selectedCategory) {
-      const categoryLabel = document.querySelector(
-        `label[for="category-${selectedCategory}"]`,
-      );
-      if (categoryLabel) {
-        const categoryElement = document.createElement("div");
-        categoryElement.className = "catalog__tagActive__item chip-label";
-        categoryElement.textContent = categoryLabel.textContent.trim();
+    // Multi-select: show a chip for each selected category
+    const selectedCategories = Array.from(
+      document.querySelectorAll(".js-catalogFilter[data-category]:checked")
+    )
+      .map(f => f.getAttribute("data-category"))
+      .filter(cat => cat && cat !== "all");
 
-        if (selectedCategory !== "all") {
-          const closeElement = document.createElement("span");
-          closeElement.className = "catalog__tagActive__close";
-          categoryElement.append(closeElement);
+    selectedCategories.forEach((cat) => {
+      const categoryLabel = document.querySelector(`label[for="category-${cat}"]`);
+      if (!categoryLabel) return;
 
-          closeElement.addEventListener("click", () => {
-            const categoryAll = document.querySelector(
-              '.js-catalogFilter[data-category="all"]',
-            );
-            if (categoryAll) {
-              categoryAll.checked = true;
-              document
-                .querySelectorAll(".js-catalogFilter[data-category]")
-                .forEach((f) => {
-                  if (f !== categoryAll) f.checked = false;
-                });
-            }
-            DataFilter.category = "all";
-            DataFilter.currentPage = 1;
-            DataFilter.hasMorePosts = true;
+      const categoryElement = document.createElement("div");
+      categoryElement.className = "catalog__tagActive__item chip-label";
+      categoryElement.textContent = categoryLabel.textContent.trim();
 
-            fetchPosts(getFetchBody({ category: "all" }))
-              .then((data) => {
-                if (data) {
-                  updateCatalogPosts(data, this.postsContainer);
-                  document.dispatchEvent(
-                    new CustomEvent("catalog:filtersUpdated"),
-                  );
-                }
-              })
-              .catch((err) => console.error("Error:", err));
-          });
+      const closeElement = document.createElement("span");
+      closeElement.className = "catalog__tagActive__close";
+      categoryElement.append(closeElement);
+
+      closeElement.addEventListener("click", () => {
+        // Uncheck this specific category
+        const catCheckbox = document.querySelector(`.js-catalogFilter[data-category="${cat}"]`);
+        if (catCheckbox) catCheckbox.checked = false;
+
+        // Recompute remaining selected
+        const remaining = Array.from(
+          document.querySelectorAll(".js-catalogFilter[data-category]:checked")
+        )
+          .map(f => f.getAttribute("data-category"))
+          .filter(c => c && c !== "all");
+
+        // Sync "Всі" state
+        const allFilter = document.querySelector('.js-catalogFilter[data-category="all"]');
+        const allSpecific = document.querySelectorAll('.js-catalogFilter[data-category]:not([data-category="all"])');
+        const allChecked = Array.from(allSpecific).every(f => f.checked);
+        const noneChecked = remaining.length === 0;
+        if (allFilter) {
+          allFilter.checked = allChecked || noneChecked;
+          allFilter.indeterminate = !allChecked && !noneChecked;
         }
 
-        this.activeTagsContainer.appendChild(categoryElement);
-      }
-    }
+        const newCategory = remaining.length > 0 ? remaining.join(",") : "all";
+        DataFilter.category = newCategory;
+        DataFilter.currentPage = 1;
+        DataFilter.hasMorePosts = true;
+
+        fetchPosts(getFetchBody({ category: newCategory }))
+          .then((data) => {
+            if (data) {
+              updateCatalogPosts(data, this.postsContainer);
+              document.dispatchEvent(new CustomEvent("catalog:filtersUpdated"));
+            }
+          })
+          .catch((err) => console.error("Error:", err));
+      });
+
+      this.activeTagsContainer.appendChild(categoryElement);
+    });
 
     selectedTags
       .filter((id) => id !== "tags-all")
@@ -1235,3 +1233,51 @@ if (scrollElement) {
     new InfiniteScroll(POST_CONTAINER_SELECTOR);
   }
 }
+
+/* ── Category "Show more" toggle ── */
+document.addEventListener("DOMContentLoaded", () => {
+  document.querySelectorAll(".js-catalogCatsToggle").forEach((btn) => {
+    const extra = btn.closest(".catalog__sidebar__section").querySelector(".catalog__sidebar__extraCats");
+    if (!extra) return;
+    btn.addEventListener("click", () => {
+      const isHidden = extra.hasAttribute("hidden");
+      if (isHidden) {
+        extra.removeAttribute("hidden");
+        btn.textContent = btn.dataset.labelLess || "Приховати";
+      } else {
+        extra.setAttribute("hidden", "");
+        btn.textContent = btn.dataset.labelMore || "Показати більше";
+      }
+    });
+  });
+
+  /* ── Mobile catalog sidebar toggle ── */
+  const catalogSidebarEl = document.querySelector(".catalog__sidebar");
+
+  function openCatalogSidebar() {
+    if (!catalogSidebarEl) return;
+    catalogSidebarEl.classList.add("is-open");
+    document.querySelectorAll(".js-catalogFiltersToggle").forEach((b) =>
+      b.classList.add("is-active")
+    );
+  }
+  function closeCatalogSidebar() {
+    if (!catalogSidebarEl) return;
+    catalogSidebarEl.classList.remove("is-open");
+    document.querySelectorAll(".js-catalogFiltersToggle").forEach((b) =>
+      b.classList.remove("is-active")
+    );
+  }
+
+  document.querySelectorAll(".js-catalogFiltersToggle").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      catalogSidebarEl?.classList.contains("is-open")
+        ? closeCatalogSidebar()
+        : openCatalogSidebar();
+    });
+  });
+
+  document.querySelectorAll(".js-catalogFiltersHide").forEach((btn) => {
+    btn.addEventListener("click", closeCatalogSidebar);
+  });
+});

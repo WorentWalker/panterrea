@@ -86,6 +86,23 @@ $forum_sidebar_categories = get_categories([
                 </div>
             </div>
 
+            <div class="forum__mobileBar">
+                <div class="forum__sidebar__search forum__mobileBar__search">
+                    <span class="forum__sidebar__searchIcon" aria-hidden="true"></span>
+                    <input type="search" name="search" inputmode="search" autocomplete="off"
+                        placeholder="<?php esc_attr_e('Пошук', 'panterrea_v1'); ?>"
+                        class="forum__sidebar__searchInput js-forumSearchInput body2"
+                        aria-label="<?php esc_attr_e('Пошук у стрічці форуму', 'panterrea_v1'); ?>"
+                        value="<?php echo isset($_GET['q']) ? esc_attr(sanitize_text_field(wp_unslash($_GET['q']))) : ''; ?>">
+                    <button type="button" class="forum__sidebar__searchSubmit js-forumMobileSearchSubmit"
+                        aria-label="<?php esc_attr_e('Шукати', 'panterrea_v1'); ?>"></button>
+                </div>
+                <button type="button" class="forum__filtersToggle js-forumFiltersToggle">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="11" y1="18" x2="13" y2="18"/></svg>
+                    <?php esc_html_e('Фільтри', 'panterrea_v1'); ?>
+                </button>
+            </div>
+
             <div class="forum__body">
                 <?php
                 get_template_part('template-parts/forum-sidebar', null, [

@@ -2052,13 +2052,17 @@ $headers = [
             $query_args['posts_per_page'] = 9;
 
             if ($clicked_category !== "all") {
+            $cat_slugs = array_values(array_filter(array_map('sanitize_key', explode(',', $clicked_category))));
+            if (!empty($cat_slugs)) {
             $query_args['tax_query'] = [
             [
             'taxonomy' => 'catalog_category',
             'field' => 'slug',
-            'terms' => $clicked_category,
+            'terms' => $cat_slugs,
+            'operator' => 'IN',
             ],
             ];
+            }
             }
             }
 
@@ -4713,6 +4717,9 @@ $headers = [
 
                     unset($GLOBALS['panterrea_forum_popular_order']);
 
+                    $has_more = $paged < $query->max_num_pages;
+                    header('X-Forum-Has-More: ' . ($has_more ? '1' : '0'));
+
                     if ($query->have_posts()) :
                     while ($query->have_posts()) : $query->the_post();
                     get_template_part('template-parts/forum-item');
@@ -5521,11 +5528,11 @@ $headers = [
                         }
 
 add_action('init', function () {
-    $term = get_term_by('name', 'Uncategorized', 'category');
-    if ($term && ! is_wp_error($term)) {
-        wp_update_term($term->term_id, 'category', [
-            'name' => 'Без категорії',
-            'slug' => 'bez-katehorii',
+    $term = get_term(1, 'category');
+    if ($term && ! is_wp_error($term) && $term->name !== 'Інше') {
+        wp_update_term(1, 'category', [
+            'name' => 'Інше',
+            'slug' => 'inhe',
         ]);
     }
 });

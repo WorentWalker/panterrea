@@ -10,13 +10,13 @@ get_header();
     <div class="container">
         <div class="forum__topBlock">
             <div class="forum__topBlock__left">
+                <?php blog_breadcrumbs(); ?>
                 <h1 class="blog__title">
                     <?php the_title(); ?>
                 </h1>
                 <div class="blog__subtitle">
                     <?php the_field('page_subtitle'); ?>
                 </div>
-                <?php blog_breadcrumbs(); ?>
             </div>
             <div class="forum__topBlock__right">
                 <input id="searchInputForum" type="text" name="search"
