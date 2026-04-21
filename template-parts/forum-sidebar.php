@@ -31,7 +31,7 @@ $has_extra_categories = count($categories_extra) > 0;
 <aside class="forum__sidebar" aria-label="<?php echo esc_attr__('Фільтри форуму', 'panterrea_v1'); ?>">
 
     <div class="forum__sidebar__section forum__sidebar__section--search">
-        <span class="forum__sidebar__label subtitle1"><?php esc_html_e('Пошук', 'panterrea_v1'); ?></span>
+        <span class="forum__sidebar__label subtitle1"><?php esc_html_e('Стрічка', 'panterrea_v1'); ?></span>
         <div class="forum__sidebar__search">
             <span class="forum__sidebar__searchIcon" aria-hidden="true"></span>
             <input id="searchInputForum" type="search" name="search" inputmode="search" autocomplete="off"

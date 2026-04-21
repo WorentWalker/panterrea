@@ -127,6 +127,34 @@ function panterrea_forum_get_sort_from_request()
     return 'all';
 }
 
+/**
+ * Keep catch-all "Інше" last (composer chips + sidebar), regardless of alphabetical order.
+ *
+ * @param array<int, WP_Term|mixed> $terms
+ * @return WP_Term[]
+ */
+function panterrea_forum_categories_other_last(array $terms)
+{
+    if ($terms === []) {
+        return [];
+    }
+    $other = [];
+    $rest = [];
+    foreach ($terms as $term) {
+        if (!$term instanceof WP_Term) {
+            continue;
+        }
+        $is_other = ($term->slug === 'inhe' || $term->name === 'Інше');
+        if ($is_other) {
+            $other[] = $term;
+        } else {
+            $rest[] = $term;
+        }
+    }
+
+    return array_merge($rest, $other);
+}
+
 function panterrea_forum_sync_like_count($post_id)
 {
     $post_id = (int) $post_id;
@@ -229,6 +257,21 @@ if (!defined('TURNSTILE_SECRET_KEY')) {
     define('TURNSTILE_SECRET_KEY', '0x4AAAAAACb0K_5MgmXTvAw_7imhXPEK3OY');
 }
 
+// eSputnik API (реєстрація → контакт). Можна перевизначити у wp-config.php.
+if (!defined('ESPUTNIK_API_KEY')) {
+    define('ESPUTNIK_API_KEY', 'B7318846ED4E907E238F4D2935C06B4E');
+}
+if (!defined('ESPUTNIK_SUBSCRIBE_GROUPS')) {
+    define('ESPUTNIK_SUBSCRIBE_GROUPS', 'PanTerrea Registration');
+}
+if (!defined('ESPUTNIK_API_BASE')) {
+    define('ESPUTNIK_API_BASE', 'https://esputnik.com');
+}
+// Ключ події в eSputnik (Automation) — має збігатися з типом події у кабінеті.
+if (!defined('ESPUTNIK_REGISTRATION_EVENT_TYPE_KEY')) {
+    define('ESPUTNIK_REGISTRATION_EVENT_TYPE_KEY', 'Реєстрація нового користувача');
+}
+
 /**
  * Include
  */
@@ -239,6 +282,7 @@ require_once get_template_directory() . '/inc/adminCustomView.php';
 require_once get_template_directory() . '/inc/moderationPanel.php';
 require_once get_template_directory() . '/inc/breadcrumbs.php';
 require_once get_template_directory() . '/inc/cron.php';
+require_once get_template_directory() . '/inc/esputnik.php';
 require_once get_template_directory() . '/inc/stripeAPI/init.php';
 require_once get_template_directory() . '/inc/awsSDK/aws-autoloader.php';
 
@@ -972,6 +1016,8 @@ send_confirmation_email($user_id);
 
 add_notification($user_id, 'user_registered', __('Вітаємо! Ви успішно зареєструвались на платформі PanTerrea.',
 'panterrea_v1'));
+
+panterrea_esputnik_sync_after_registration((int) $user_id, $formData);
 
 wp_send_json_success(['message' => 'User successfully registered!']);
 } catch (Exception $e) {
@@ -2406,7 +2452,7 @@ $headers = [
             FormValidator::rules()['isNumber']]);*/
             $validator->addRules('adCurrency', [FormValidator::rules()['isNotEmpty']]);
             $validator->addRules('adDesc', [FormValidator::rules()['isNotEmpty'],
-            FormValidator::rules()['maxLength'](1000)]);
+            FormValidator::rules()['maxLength'](2000)]);
             $validator->addRules('adCondition', [FormValidator::rules()['isNotEmpty']]);
 
             $validationResult = $validator->validate($formData);
@@ -2638,7 +2684,7 @@ $headers = [
             FormValidator::rules()['isNumber']]);*/
             $validator->addRules('adCurrency', [FormValidator::rules()['isNotEmpty']]);
             $validator->addRules('adDesc', [FormValidator::rules()['isNotEmpty'],
-            FormValidator::rules()['maxLength'](1000)]);
+            FormValidator::rules()['maxLength'](2000)]);
             $validator->addRules('adCondition', [FormValidator::rules()['isNotEmpty']]);
 
             $validationResult = $validator->validate($formData);

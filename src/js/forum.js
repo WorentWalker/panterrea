@@ -1,11 +1,12 @@
 document.addEventListener("DOMContentLoaded", function () {
-
   /* ── Composer helpers ── */
   const composerWrap = document.getElementById("forumComposer");
 
   function focusComposer() {
     composerWrap?.classList.add("is-open");
-    if (quill) { quill.focus(); }
+    if (quill) {
+      quill.focus();
+    }
   }
 
   /* ── Login popup ── */
@@ -26,6 +27,13 @@ document.addEventListener("DOMContentLoaded", function () {
 
   document.querySelectorAll(".js-forumLoginPopupClose").forEach((el) => {
     el.addEventListener("click", closeLoginPopup);
+  });
+
+  document.addEventListener("click", (e) => {
+    if (e.target.closest(".js-forumOpenLoginPopup")) {
+      e.preventDefault();
+      openLoginPopup();
+    }
   });
 
   document.addEventListener("keydown", (e) => {
@@ -49,8 +57,9 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   function getSelectedCatIds() {
-    return Array.from(document.querySelectorAll(".js-forumCatChip.is-active"))
-      .map((c) => c.dataset.catId);
+    return Array.from(
+      document.querySelectorAll(".js-forumCatChip.is-active"),
+    ).map((c) => c.dataset.catId);
   }
 
   const closeIconSVG = `<span class="forum__composer__catChip__x" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 17 17" fill="none"><path fill-rule="evenodd" clip-rule="evenodd" d="M16.6667 8.33333C16.6667 12.9358 12.9358 16.6667 8.33333 16.6667C3.73083 16.6667 0 12.9358 0 8.33333C0 3.73083 3.73083 0 8.33333 0C12.9358 0 16.6667 3.73083 16.6667 8.33333ZM5.80833 5.80833C5.92552 5.69129 6.08437 5.62555 6.25 5.62555C6.41563 5.62555 6.57448 5.69129 6.69167 5.80833L8.33333 7.45L9.975 5.80833C10.0935 5.69793 10.2502 5.63783 10.4121 5.64069C10.574 5.64354 10.7285 5.70914 10.843 5.82365C10.9575 5.93816 11.0231 6.09265 11.026 6.25456C11.0288 6.41648 10.9687 6.57319 10.8583 6.69167L9.21667 8.33333L10.8583 9.975C10.9687 10.0935 11.0288 10.2502 11.026 10.4121C11.0231 10.574 10.9575 10.7285 10.843 10.843C10.7285 10.9575 10.574 11.0231 10.4121 11.026C10.2502 11.0288 10.0935 10.9687 9.975 10.8583L8.33333 9.21667L6.69167 10.8583C6.57319 10.9687 6.41648 11.0288 6.25456 11.026C6.09265 11.0231 5.93816 10.9575 5.82365 10.843C5.70914 10.7285 5.64354 10.574 5.64069 10.4121C5.63783 10.2502 5.69793 10.0935 5.80833 9.975L7.45 8.33333L5.80833 6.69167C5.69129 6.57448 5.62555 6.41563 5.62555 6.25C5.62555 6.08437 5.69129 5.92552 5.80833 5.80833Z" fill="#116262"/></svg></span>`;
@@ -67,31 +76,121 @@ document.addEventListener("DOMContentLoaded", function () {
   document.querySelectorAll(".js-forumCatChip").forEach((chip) => {
     chip.addEventListener("click", function () {
       chip.classList.toggle("is-active");
-      chip.setAttribute("aria-pressed", chip.classList.contains("is-active") ? "true" : "false");
+      chip.setAttribute(
+        "aria-pressed",
+        chip.classList.contains("is-active") ? "true" : "false",
+      );
       updateChipIcon(chip);
       syncCatHiddenInputs();
     });
   });
 
-  /* ── Guest draft — localStorage ── */
+  /* ── Guest draft — localStorage (text/cats) + IndexedDB (files) ── */
   const DRAFT_KEY = "panterrea_forum_draft";
   const COMMENT_DRAFT_PREFIX = "panterrea_comment_draft_";
+  const IDB_NAME = "panterrea_forum_drafts";
+  const IDB_STORE = "files";
+  const IDB_FILES_KEY = "guest_post_files";
 
-  function saveDraft(content, cats) {
+  function idbOpen() {
+    return new Promise((resolve, reject) => {
+      if (!("indexedDB" in window)) {
+        reject(new Error("IndexedDB not supported"));
+        return;
+      }
+      const req = indexedDB.open(IDB_NAME, 1);
+      req.onupgradeneeded = () => {
+        const db = req.result;
+        if (!db.objectStoreNames.contains(IDB_STORE)) {
+          db.createObjectStore(IDB_STORE, { keyPath: "id" });
+        }
+      };
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+  }
+
+  async function idbPutFiles(files) {
+    try {
+      const db = await idbOpen();
+      return await new Promise((resolve) => {
+        const tx = db.transaction(IDB_STORE, "readwrite");
+        tx.objectStore(IDB_STORE).put({ id: IDB_FILES_KEY, files });
+        tx.oncomplete = () => resolve(true);
+        tx.onerror = () => resolve(false);
+        tx.onabort = () => resolve(false);
+      });
+    } catch (_) {
+      return false;
+    }
+  }
+
+  async function idbGetFiles() {
+    try {
+      const db = await idbOpen();
+      return await new Promise((resolve) => {
+        const tx = db.transaction(IDB_STORE, "readonly");
+        const req = tx.objectStore(IDB_STORE).get(IDB_FILES_KEY);
+        req.onsuccess = () => resolve(req.result ? req.result.files : null);
+        req.onerror = () => resolve(null);
+      });
+    } catch (_) {
+      return null;
+    }
+  }
+
+  async function idbClearFiles() {
+    try {
+      const db = await idbOpen();
+      return await new Promise((resolve) => {
+        const tx = db.transaction(IDB_STORE, "readwrite");
+        tx.objectStore(IDB_STORE).delete(IDB_FILES_KEY);
+        tx.oncomplete = () => resolve(true);
+        tx.onerror = () => resolve(false);
+      });
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function saveDraftText(content, cats) {
     try {
       localStorage.setItem(DRAFT_KEY, JSON.stringify({ content, cats }));
     } catch (_) {}
+  }
+
+  async function saveDraft(content, cats, files) {
+    saveDraftText(content, cats);
+    const filesPayload = Array.isArray(files)
+      ? files
+          .filter((f) => f && f.file instanceof Blob)
+          .map((f) => ({
+            file: f.file,
+            name: f.name || (f.file && f.file.name) || "file",
+            type: f.type || (f.file && f.file.type) || "",
+          }))
+      : [];
+    if (filesPayload.length) {
+      await idbPutFiles(filesPayload);
+    } else {
+      await idbClearFiles();
+    }
   }
 
   function loadDraft() {
     try {
       const raw = localStorage.getItem(DRAFT_KEY);
       return raw ? JSON.parse(raw) : null;
-    } catch (_) { return null; }
+    } catch (_) {
+      return null;
+    }
   }
 
   function clearDraft() {
-    try { localStorage.removeItem(DRAFT_KEY); } catch (_) {}
+    try {
+      localStorage.removeItem(DRAFT_KEY);
+    } catch (_) {}
+    idbClearFiles();
   }
 
   /* ── Comment drafts (per post) ── */
@@ -104,14 +203,18 @@ document.addEventListener("DOMContentLoaded", function () {
   function loadCommentDraft(postId) {
     try {
       return localStorage.getItem(COMMENT_DRAFT_PREFIX + postId) || null;
-    } catch (_) { return null; }
+    } catch (_) {
+      return null;
+    }
   }
 
   function clearCommentDraft(postId) {
-    try { localStorage.removeItem(COMMENT_DRAFT_PREFIX + postId); } catch (_) {}
+    try {
+      localStorage.removeItem(COMMENT_DRAFT_PREFIX + postId);
+    } catch (_) {}
   }
 
-  function restoreDraft(draft) {
+  async function restoreDraft(draft) {
     if (!draft) return;
     if (quill && draft.content) {
       quill.clipboard.dangerouslyPasteHTML(draft.content);
@@ -125,6 +228,21 @@ document.addEventListener("DOMContentLoaded", function () {
         }
       });
       syncCatHiddenInputs();
+    }
+    const storedFiles = await idbGetFiles();
+    if (Array.isArray(storedFiles) && storedFiles.length) {
+      filesArray = [];
+      storedFiles.forEach((f) => {
+        if (!f || !f.file) return;
+        const blob = f.file;
+        const name = f.name || blob.name || "file";
+        const type = f.type || blob.type || "";
+        const file =
+          blob instanceof File ? blob : new File([blob], name, { type });
+        const preview = URL.createObjectURL(file);
+        filesArray.push({ file, preview, name, type });
+      });
+      renderPreview();
     }
     clearDraft();
   }
@@ -171,65 +289,70 @@ document.addEventListener("DOMContentLoaded", function () {
   let filesArray = [];
 
   if (uploadButton && fileInput) {
-  uploadButton.addEventListener("click", () => {
-    fileInput.click();
-  });
-
-  fileInput.addEventListener("change", (event) => {
-    const selectedFiles = Array.from(event.target.files);
-
-    selectedFiles.forEach((file) => {
-      if (filesArray.length >= maxFiles) return;
-
-      const isImage = file.type.startsWith("image/");
-      const isVideo = file.type.startsWith("video/");
-
-      const imageMaxSize = 5 * 1024 * 1024;
-      const videoMaxSize = 120 * 1024 * 1024;
-
-      if (isImage && file.size > imageMaxSize) {
-        MessageSystem.showMessage(
-          "warning",
-          getTranslatedText("file_size_limit")
-        );
-        /*MessageSystem.showMessage('warning', getTranslation('file_size_limit'));*/
-        return;
-      }
-
-      if (isVideo && file.size > videoMaxSize) {
-        MessageSystem.showMessage(
-          "warning",
-          getTranslatedText("video_size_limit")
-        );
-        /*MessageSystem.showMessage('warning', getTranslation('video_size_limit'));*/
-        return;
-      }
-
-      const supported = ["image/jpeg", "image/png", "image/webp", "video/mp4"];
-      if (!supported.includes(file.type)) {
-        MessageSystem.showMessage(
-          "warning",
-          getTranslatedText("unsupported_file_format")
-        );
-        /*MessageSystem.showMessage('warning', getTranslation('unsupported_file_format'));*/
-        return;
-      }
-
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        filesArray.push({
-          file,
-          preview: e.target.result,
-          name: file.name,
-          type: file.type,
-        });
-        renderPreview();
-      };
-      reader.readAsDataURL(file);
+    uploadButton.addEventListener("click", () => {
+      fileInput.click();
     });
 
-    event.target.value = "";
-  });
+    fileInput.addEventListener("change", (event) => {
+      const selectedFiles = Array.from(event.target.files);
+
+      selectedFiles.forEach((file) => {
+        if (filesArray.length >= maxFiles) return;
+
+        const isImage = file.type.startsWith("image/");
+        const isVideo = file.type.startsWith("video/");
+
+        const imageMaxSize = 5 * 1024 * 1024;
+        const videoMaxSize = 120 * 1024 * 1024;
+
+        if (isImage && file.size > imageMaxSize) {
+          MessageSystem.showMessage(
+            "warning",
+            getTranslatedText("file_size_limit"),
+          );
+          /*MessageSystem.showMessage('warning', getTranslation('file_size_limit'));*/
+          return;
+        }
+
+        if (isVideo && file.size > videoMaxSize) {
+          MessageSystem.showMessage(
+            "warning",
+            getTranslatedText("video_size_limit"),
+          );
+          /*MessageSystem.showMessage('warning', getTranslation('video_size_limit'));*/
+          return;
+        }
+
+        const supported = [
+          "image/jpeg",
+          "image/png",
+          "image/webp",
+          "video/mp4",
+        ];
+        if (!supported.includes(file.type)) {
+          MessageSystem.showMessage(
+            "warning",
+            getTranslatedText("unsupported_file_format"),
+          );
+          /*MessageSystem.showMessage('warning', getTranslation('unsupported_file_format'));*/
+          return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          filesArray.push({
+            file,
+            preview: e.target.result,
+            name: file.name,
+            type: file.type,
+          });
+          renderPreview();
+        };
+        reader.readAsDataURL(file);
+      });
+
+      event.target.value = "";
+    });
   }
 
   function renderPreview() {
@@ -270,111 +393,129 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   if (form) {
-  form.addEventListener("submit", (event) => {
-    event.preventDefault();
+    form.addEventListener("submit", (event) => {
+      event.preventDefault();
 
-    const quillHtml = document.querySelector(".ql-editor")?.innerHTML || "";
-    const textContent =
-      document.querySelector(".ql-editor")?.innerText.trim() || "";
+      const quillHtml = document.querySelector(".ql-editor")?.innerHTML || "";
+      const textContent =
+        document.querySelector(".ql-editor")?.innerText.trim() || "";
 
-    const textareaWrapper = document.querySelector(".input__formTextarea");
-    const errorElement = textareaWrapper.querySelector(".error.caption");
+      const textareaWrapper = document.querySelector(".input__formTextarea");
+      const errorElement = textareaWrapper.querySelector(".error.caption");
 
-    textareaWrapper.classList.remove("notValid");
-    errorElement.textContent = "";
+      textareaWrapper.classList.remove("notValid");
+      errorElement.textContent = "";
 
-    if (!textContent) {
-      textareaWrapper.classList.add("notValid");
-      errorElement.textContent = "Обов'язкове поле.";
-      return;
-    }
+      if (!textContent) {
+        textareaWrapper.classList.add("notValid");
+        errorElement.textContent = "Обов'язкове поле.";
+        return;
+      }
 
-    /* ── Guest: save draft & open login popup ── */
-    const isLoggedIn = form.dataset.loggedIn === "1";
-    if (!isLoggedIn) {
-      saveDraft(quillHtml, getSelectedCatIds());
-      openLoginPopup();
-      return;
-    }
+      /* ── Guest: save draft & open login popup ── */
+      const isLoggedIn = form.dataset.loggedIn === "1";
+      if (!isLoggedIn) {
+        /* Persist text/cats immediately (sync) so they survive even if the
+           async IDB write is interrupted by navigation. */
+        saveDraftText(quillHtml, getSelectedCatIds());
+        saveDraft(quillHtml, getSelectedCatIds(), filesArray).finally(() => {
+          openLoginPopup();
+        });
+        return;
+      }
 
-    syncCatHiddenInputs();
-    document.getElementById("postContent").value = quillHtml;
+      syncCatHiddenInputs();
+      document.getElementById("postContent").value = quillHtml;
 
-    const formData = new FormData(form);
-    formData.append("security", forumObject.forum_nonce);
+      const formData = new FormData(form);
+      formData.append("security", forumObject.forum_nonce);
 
-    filesArray.forEach((item, index) => {
-      if (item.file) {
-        formData.append(`files[${index}]`, item.file);
+      filesArray.forEach((item, index) => {
+        if (item.file) {
+          formData.append(`files[${index}]`, item.file);
+        } else {
+          formData.append(`existing[${index}]`, item.preview);
+        }
+      });
+
+      toggleLoadingCursor(true);
+
+      if (isEditing) {
+        formData.append("action", "forum_edit_post");
+        formData.append("post_id", editingPostId);
+
+        fetch(mainObject.ajax_url, {
+          method: "POST",
+          body: formData,
+        })
+          .then((res) => res.json())
+          .then((data) => {
+            if (data.success) {
+              setMessageCookies(
+                "success",
+                getTranslatedText("edit_success"),
+                60,
+              );
+              /*setMessageCookies('success', getTranslation('edit_success'), 60);*/
+              location.reload();
+            } else {
+              MessageSystem.showMessage(
+                "error",
+                data.data?.message || getTranslatedText("error_generic"),
+              );
+              /*MessageSystem.showMessage('error', data.data?.message || getTranslation('error_generic'));*/
+            }
+          })
+          .catch(() => {
+            MessageSystem.showMessage(
+              "error",
+              getTranslatedText("server_error"),
+            );
+            /*MessageSystem.showMessage('error', getTranslation('server_error'));*/
+          })
+          .finally(() => {
+            toggleLoadingCursor(false);
+          });
       } else {
-        formData.append(`existing[${index}]`, item.preview);
+        formData.append("action", "forum_submit_post");
+
+        fetch(mainObject.ajax_url, {
+          method: "POST",
+          body: formData,
+        })
+          .then((res) => res.json())
+          .then((data) => {
+            if (data.success) {
+              form.reset();
+              filesArray = [];
+              renderPreview();
+              setMessageCookies(
+                "success",
+                getTranslatedText("post_success"),
+                60,
+              );
+              /*setMessageCookies('success', getTranslation('post_success'), 60);*/
+              location.reload();
+            } else {
+              MessageSystem.showMessage(
+                "error",
+                data.data?.message || getTranslatedText("error_generic"),
+              );
+              /*MessageSystem.showMessage('error', data.data?.message || getTranslation('error_generic'));*/
+            }
+          })
+          .catch(() => {
+            MessageSystem.showMessage(
+              "error",
+              getTranslatedText("server_error"),
+            );
+            /*MessageSystem.showMessage('error', getTranslation('server_error'));*/
+          })
+          .finally(() => {
+            toggleLoadingCursor(false);
+          });
       }
     });
-
-    toggleLoadingCursor(true);
-
-    if (isEditing) {
-      formData.append("action", "forum_edit_post");
-      formData.append("post_id", editingPostId);
-
-      fetch(mainObject.ajax_url, {
-        method: "POST",
-        body: formData,
-      })
-        .then((res) => res.json())
-        .then((data) => {
-          if (data.success) {
-            setMessageCookies("success", getTranslatedText("edit_success"), 60);
-            /*setMessageCookies('success', getTranslation('edit_success'), 60);*/
-            location.reload();
-          } else {
-            MessageSystem.showMessage(
-              "error",
-              data.data?.message || getTranslatedText("error_generic")
-            );
-            /*MessageSystem.showMessage('error', data.data?.message || getTranslation('error_generic'));*/
-          }
-        })
-        .catch(() => {
-          MessageSystem.showMessage("error", getTranslatedText("server_error"));
-          /*MessageSystem.showMessage('error', getTranslation('server_error'));*/
-        })
-        .finally(() => {
-          toggleLoadingCursor(false);
-        });
-    } else {
-      formData.append("action", "forum_submit_post");
-
-      fetch(mainObject.ajax_url, {
-        method: "POST",
-        body: formData,
-      })
-        .then((res) => res.json())
-        .then((data) => {
-          if (data.success) {
-            form.reset();
-            filesArray = [];
-            renderPreview();
-            setMessageCookies("success", getTranslatedText("post_success"), 60);
-            /*setMessageCookies('success', getTranslation('post_success'), 60);*/
-            location.reload();
-          } else {
-            MessageSystem.showMessage(
-              "error",
-              data.data?.message || getTranslatedText("error_generic")
-            );
-            /*MessageSystem.showMessage('error', data.data?.message || getTranslation('error_generic'));*/
-          }
-        })
-        .catch(() => {
-          MessageSystem.showMessage("error", getTranslatedText("server_error"));
-          /*MessageSystem.showMessage('error', getTranslation('server_error'));*/
-        })
-        .finally(() => {
-          toggleLoadingCursor(false);
-        });
-    }
-  });
   }
 
   if (previewContainer) {
@@ -402,7 +543,7 @@ document.addEventListener("DOMContentLoaded", function () {
       return [];
     }
     return Array.from(
-      document.querySelectorAll(".js-forumCategoryFilter:checked")
+      document.querySelectorAll(".js-forumCategoryFilter:checked"),
     ).map((el) => String(el.value));
   }
 
@@ -410,7 +551,7 @@ document.addEventListener("DOMContentLoaded", function () {
     const allBox = document.getElementById("forum-cat-all");
     if (!allBox) return;
     const anySpec = document.querySelector(
-      ".forum__sidebar .js-forumCategoryFilter:checked"
+      ".forum__sidebar .js-forumCategoryFilter:checked",
     );
     if (!anySpec) {
       allBox.checked = true;
@@ -427,7 +568,8 @@ document.addEventListener("DOMContentLoaded", function () {
   function forumUiStrings() {
     const o = typeof forumObject !== "undefined" ? forumObject : {};
     return {
-      showComments: o.str_show_all_comments || getTranslatedText("show_comment"),
+      showComments:
+        o.str_show_all_comments || getTranslatedText("show_comment"),
       hideComments: o.str_hide_comments || getTranslatedText("hide_comment"),
       showAll: o.str_show_all || "Показати всі",
       hide: o.str_hide || "Сховати",
@@ -442,7 +584,7 @@ document.addEventListener("DOMContentLoaded", function () {
         : root.nodeType === 1);
     const el = isEl ? root : document;
     const nodes = el.querySelectorAll(
-      ".forum__itemPost__comment__body.is-forumCommentClampable"
+      ".forum__itemPost__comment__body.is-forumCommentClampable",
     );
 
     nodes.forEach((body) => {
@@ -506,12 +648,23 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   }
 
+  function syncForumTopCommentsCountBadge(postEl) {
+    if (!postEl) return;
+    const commentsRoot = postEl.querySelector(".forum__itemPost__comments");
+    const label = postEl.querySelector(".js-forumTopCommentsCount");
+    if (!commentsRoot || !label) return;
+    const n = commentsRoot.querySelectorAll(
+      ":scope > .forum__itemPost__comment",
+    ).length;
+    label.textContent = n > 0 ? String(n) : "";
+  }
+
   function forumRefreshTopLevelCommentsUi(postEl) {
     const commentsRoot = postEl.querySelector(".forum__itemPost__comments");
     const block = postEl.querySelector(".forum__itemPost__commentsBlock");
     if (!commentsRoot || !block) return;
     const tops = commentsRoot.querySelectorAll(
-      ":scope > .forum__itemPost__comment"
+      ":scope > .forum__itemPost__comment",
     );
     let btn = block.querySelector(".js-toggleComments");
     tops.forEach((el, i) => {
@@ -534,6 +687,7 @@ document.addEventListener("DOMContentLoaded", function () {
     } else if (btn) {
       btn.remove();
     }
+    syncForumTopCommentsCountBadge(postEl);
     scheduleInitForumUi(postEl);
   }
 
@@ -574,7 +728,7 @@ document.addEventListener("DOMContentLoaded", function () {
         } else {
           MessageSystem.showMessage(
             "error",
-            getTranslatedText("error_generic")
+            getTranslatedText("error_generic"),
           );
         }
       })
@@ -708,25 +862,33 @@ document.addEventListener("DOMContentLoaded", function () {
 
   syncLoadMoreBtn();
 
-  document.querySelectorAll('input[name="forum_feed_sort"]').forEach((radio) => {
-    radio.addEventListener("change", () => {
-      if (!radio.checked) return;
-      forumSort = radio.value;
-      syncForumSortDataAttr();
-      refreshForumFeed();
+  document
+    .querySelectorAll('input[name="forum_feed_sort"]')
+    .forEach((radio) => {
+      radio.addEventListener("change", () => {
+        if (!radio.checked) return;
+        forumSort = radio.value;
+        syncForumSortDataAttr();
+        refreshForumFeed();
+      });
     });
-  });
 
   const forumCatAll = document.getElementById("forum-cat-all");
   if (forumCatAll) {
     forumCatAll.addEventListener("change", () => {
-      const allFilters = document.querySelectorAll(".forum__sidebar .js-forumCategoryFilter");
+      const allFilters = document.querySelectorAll(
+        ".forum__sidebar .js-forumCategoryFilter",
+      );
       if (forumCatAll.checked) {
         // Check all individual categories
-        allFilters.forEach((cb) => { cb.checked = true; });
+        allFilters.forEach((cb) => {
+          cb.checked = true;
+        });
       } else {
         // Uncheck all individual categories
-        allFilters.forEach((cb) => { cb.checked = false; });
+        allFilters.forEach((cb) => {
+          cb.checked = false;
+        });
       }
       refreshForumFeed();
     });
@@ -735,8 +897,13 @@ document.addEventListener("DOMContentLoaded", function () {
   document.querySelectorAll(".js-forumCategoryFilter").forEach((cb) => {
     cb.addEventListener("change", () => {
       const allBox = document.getElementById("forum-cat-all");
-      if (!allBox) { refreshForumFeed(); return; }
-      const allFilters = document.querySelectorAll(".forum__sidebar .js-forumCategoryFilter");
+      if (!allBox) {
+        refreshForumFeed();
+        return;
+      }
+      const allFilters = document.querySelectorAll(
+        ".forum__sidebar .js-forumCategoryFilter",
+      );
       const allChecked = Array.from(allFilters).every((f) => f.checked);
       const noneChecked = Array.from(allFilters).every((f) => !f.checked);
       // "Всі" is checked when all individual boxes are checked or none are checked
@@ -749,7 +916,10 @@ document.addEventListener("DOMContentLoaded", function () {
   document.querySelectorAll(".js-forumCatsToggle").forEach((btn) => {
     btn.addEventListener("click", () => {
       const extras = btn.previousElementSibling;
-      if (!extras || !extras.classList.contains("forum__sidebar__categoryExtras")) {
+      if (
+        !extras ||
+        !extras.classList.contains("forum__sidebar__categoryExtras")
+      ) {
         return;
       }
       const collapsed = extras.classList.toggle("is-collapsed");
@@ -790,10 +960,14 @@ document.addEventListener("DOMContentLoaded", function () {
 
   if (forumFiltersToggle) {
     forumFiltersToggle.addEventListener("click", () => {
-      forumSidebar.classList.contains("is-open") ? closeForumSidebar() : openForumSidebar();
+      forumSidebar.classList.contains("is-open")
+        ? closeForumSidebar()
+        : openForumSidebar();
     });
   }
-  forumFiltersHide.forEach((btn) => btn.addEventListener("click", closeForumSidebar));
+  forumFiltersHide.forEach((btn) =>
+    btn.addEventListener("click", closeForumSidebar),
+  );
 
   /* ── Search (mobile bar + sidebar share the same logic) ── */
   function getActiveForumSearch() {
@@ -805,7 +979,9 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   document
-    .querySelectorAll(".forum__sidebar__searchSubmit, .js-forumMobileSearchSubmit")
+    .querySelectorAll(
+      ".forum__sidebar__searchSubmit, .js-forumMobileSearchSubmit",
+    )
     .forEach((btn) => {
       btn.addEventListener("click", () => {
         const si = getActiveForumSearch();
@@ -836,13 +1012,13 @@ document.addEventListener("DOMContentLoaded", function () {
 
   document.addEventListener("click", function (event) {
     const allOptionsLists = document.querySelectorAll(
-      ".forum__itemPost__optionsList"
+      ".forum__itemPost__optionsList",
     );
     const forumOptions = event.target.closest(".js-forumOptions");
 
     if (forumOptions) {
       const optionsList = forumOptions.querySelector(
-        ".forum__itemPost__optionsList"
+        ".forum__itemPost__optionsList",
       );
 
       if (optionsList) {
@@ -865,7 +1041,7 @@ document.addEventListener("DOMContentLoaded", function () {
     .getElementById("infiniteScrollForum")
     ?.addEventListener("click", function (event) {
       const button = event.target.closest(
-        ".js-openPopUp[data-popUp='deleteForumItem']"
+        ".js-openPopUp[data-popUp='deleteForumItem']",
       );
       if (!button) return;
 
@@ -876,7 +1052,7 @@ document.addEventListener("DOMContentLoaded", function () {
     });
 
   const deleteForumItemButton = document.getElementById(
-    "deleteForumItemButton"
+    "deleteForumItemButton",
   );
   if (deleteForumItemButton) {
     deleteForumItemButton.addEventListener("click", function () {
@@ -895,7 +1071,7 @@ document.addEventListener("DOMContentLoaded", function () {
         .then((data) => {
           if (data.success) {
             const postElement = document.querySelector(
-              `.forum__itemPost[data-post-id="${deletePostId}"]`
+              `.forum__itemPost[data-post-id="${deletePostId}"]`,
             );
             if (postElement) postElement.remove();
 
@@ -905,7 +1081,7 @@ document.addEventListener("DOMContentLoaded", function () {
           } else {
             MessageSystem.showMessage(
               "error",
-              getTranslatedText("delete_error")
+              getTranslatedText("delete_error"),
             );
             /*MessageSystem.showMessage("error", getTranslation('delete_error', 'Помилка видалення.'));*/
           }
@@ -928,7 +1104,9 @@ document.addEventListener("DOMContentLoaded", function () {
   function resetForm() {
     if (!form) return;
     form.reset();
-    if (quill) { quill.setContents([]); }
+    if (quill) {
+      quill.setContents([]);
+    }
     filesArray = [];
     editingPostId = null;
     isEditing = false;
@@ -944,15 +1122,18 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   /* ── Restore draft on page load (logged-in users) ── */
-  (function checkAndRestoreDraft() {
+  (async function checkAndRestoreDraft() {
     const isLoggedIn = form && form.dataset.loggedIn === "1";
     if (!isLoggedIn) return;
     const draft = loadDraft();
-    if (!draft) return;
+    const idbFiles = await idbGetFiles();
+    const hasFiles = Array.isArray(idbFiles) && idbFiles.length > 0;
+    if (!draft && !hasFiles) return;
+    const payload = draft || { content: "", cats: [] };
     // Defer until Quill is ready
     const tryRestore = (attempts) => {
       if (quill) {
-        restoreDraft(draft);
+        restoreDraft(payload);
         focusComposer();
       } else if (attempts > 0) {
         setTimeout(() => tryRestore(attempts - 1), 200);
@@ -1046,7 +1227,9 @@ document.addEventListener("DOMContentLoaded", function () {
   function submitComment(commentForm, commentText) {
     const postId = commentForm.dataset.postId;
     const inputWrapper = commentForm.querySelector(".input__form");
-    const errorElement = inputWrapper ? inputWrapper.querySelector(".error") : null;
+    const errorElement = inputWrapper
+      ? inputWrapper.querySelector(".error")
+      : null;
 
     if (inputWrapper) inputWrapper.classList.remove("notValid");
     if (errorElement) errorElement.textContent = "";
@@ -1073,14 +1256,26 @@ document.addEventListener("DOMContentLoaded", function () {
             .closest(".forum__itemPost")
             .querySelector(".forum__itemPost__comments");
           if (commentsContainer) {
-            commentsContainer.insertAdjacentHTML("beforeend", data.data.comment_html);
-            forumRefreshTopLevelCommentsUi(commentForm.closest(".forum__itemPost"));
+            commentsContainer.insertAdjacentHTML(
+              "beforeend",
+              data.data.comment_html,
+            );
+            forumRefreshTopLevelCommentsUi(
+              commentForm.closest(".forum__itemPost"),
+            );
           }
           commentForm.reset();
+          syncCommentCancelState(commentForm);
           clearCommentDraft(postId);
-          MessageSystem.showMessage("success", getTranslatedText("comment_added"));
+          MessageSystem.showMessage(
+            "success",
+            getTranslatedText("comment_added"),
+          );
         } else {
-          MessageSystem.showMessage("error", getTranslatedText("error_generic"));
+          MessageSystem.showMessage(
+            "error",
+            getTranslatedText("error_generic"),
+          );
         }
       })
       .catch(() => {
@@ -1115,27 +1310,51 @@ document.addEventListener("DOMContentLoaded", function () {
   document.addEventListener("click", function (e) {
     const cancelBtn = e.target.closest(".js-forumCommentCancel");
     if (!cancelBtn) return;
+    if (cancelBtn.disabled) return;
     const commentForm = cancelBtn.closest(".js-forumCommentForm");
     if (!commentForm) return;
     commentForm.reset();
     const inputWrapper = commentForm.querySelector(".input__form");
     if (inputWrapper) inputWrapper.classList.remove("notValid");
+    syncCommentCancelState(commentForm);
   });
+
+  /* ── Sync Cancel button state with input value ── */
+  function syncCommentCancelState(commentForm) {
+    const cancelBtn = commentForm.querySelector(".js-forumCommentCancel");
+    if (!cancelBtn) return;
+    const input = commentForm.querySelector('input[name="comment"]');
+    const hasValue = !!(input && input.value.trim());
+    cancelBtn.disabled = !hasValue;
+  }
+
+  document.addEventListener("input", function (e) {
+    const input = e.target.closest('.js-forumCommentForm input[name="comment"]');
+    if (!input) return;
+    const form = input.closest(".js-forumCommentForm");
+    if (form) syncCommentCancelState(form);
+  });
+
+  document
+    .querySelectorAll(".js-forumCommentForm")
+    .forEach((form) => syncCommentCancelState(form));
 
   /* ── On page load: restore comment draft if logged in ── */
   (function restoreCommentDrafts() {
-    document.querySelectorAll(".js-forumCommentForm[data-logged-in='1']").forEach((form) => {
-      const postId = form.dataset.postId;
-      const draft = loadCommentDraft(postId);
-      if (!draft) return;
-      const input = form.querySelector('input[name="comment"]');
-      if (input) {
-        input.value = draft;
-        clearCommentDraft(postId);
-        /* Auto-submit after short delay so UI is ready */
-        setTimeout(() => submitComment(form, draft), 400);
-      }
-    });
+    document
+      .querySelectorAll(".js-forumCommentForm[data-logged-in='1']")
+      .forEach((form) => {
+        const postId = form.dataset.postId;
+        const draft = loadCommentDraft(postId);
+        if (!draft) return;
+        const input = form.querySelector('input[name="comment"]');
+        if (input) {
+          input.value = draft;
+          clearCommentDraft(postId);
+          /* Auto-submit after short delay so UI is ready */
+          setTimeout(() => submitComment(form, draft), 400);
+        }
+      });
   })();
 
   document.addEventListener("click", function (e) {
@@ -1212,7 +1431,7 @@ document.addEventListener("DOMContentLoaded", function () {
         if (data.success) {
           if (isEditing) {
             const commentContent = commentElement.querySelector(
-              ".forum__itemPost__comment__body"
+              ".forum__itemPost__comment__body",
             );
             if (commentContent) {
               commentContent.innerHTML = "";
@@ -1226,12 +1445,12 @@ document.addEventListener("DOMContentLoaded", function () {
             }
             MessageSystem.showMessage(
               "success",
-              getTranslatedText("comment_edit")
+              getTranslatedText("comment_edit"),
             );
             /*MessageSystem.showMessage("success", getTranslation("comment_edit", "Коментар оновлено"));*/
           } else {
             let repliesWrapper = commentElement.querySelector(
-              ".forum__itemPost__comment__replies"
+              ".forum__itemPost__comment__replies",
             );
             if (!repliesWrapper) {
               repliesWrapper = document.createElement("div");
@@ -1240,7 +1459,7 @@ document.addEventListener("DOMContentLoaded", function () {
             }
             repliesWrapper.insertAdjacentHTML(
               "beforeend",
-              data.data.comment_html
+              data.data.comment_html,
             );
             const inserted = repliesWrapper.lastElementChild;
             if (inserted) {
@@ -1248,7 +1467,7 @@ document.addEventListener("DOMContentLoaded", function () {
             }
             MessageSystem.showMessage(
               "success",
-              getTranslatedText("comment_added")
+              getTranslatedText("comment_added"),
             );
             /*MessageSystem.showMessage("success", getTranslation("comment_added", "Коментар додано"));*/
           }
@@ -1261,7 +1480,7 @@ document.addEventListener("DOMContentLoaded", function () {
         } else {
           MessageSystem.showMessage(
             "error",
-            data.data?.message || getTranslatedText("error_generic")
+            data.data?.message || getTranslatedText("error_generic"),
           );
           /*MessageSystem.showMessage("error", data.data?.message || getTranslation("error_generic"));*/
         }
@@ -1279,7 +1498,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
   document.addEventListener("click", function (event) {
     const deleteBtn = event.target.closest(
-      ".js-openPopUp[data-popUp='deleteForumComment']"
+      ".js-openPopUp[data-popUp='deleteForumComment']",
     );
 
     if (deleteBtn) {
@@ -1291,7 +1510,7 @@ document.addEventListener("DOMContentLoaded", function () {
   });
 
   const deleteCommentButton = document.getElementById(
-    "deleteForumCommentButton"
+    "deleteForumCommentButton",
   );
 
   if (deleteCommentButton) {
@@ -1311,9 +1530,13 @@ document.addEventListener("DOMContentLoaded", function () {
         .then((data) => {
           if (data.success) {
             const commentElement = document.querySelector(
-              `.forum__itemPost__comment[data-comment-id="${deleteCommentId}"]`
+              `.forum__itemPost__comment[data-comment-id="${deleteCommentId}"]`,
             );
-            if (commentElement) commentElement.remove();
+            if (commentElement) {
+              const postEl = commentElement.closest(".forum__itemPost");
+              commentElement.remove();
+              if (postEl) forumRefreshTopLevelCommentsUi(postEl);
+            }
             document
               .querySelector("#deleteForumComment .js-closePopUp")
               ?.click();
@@ -1322,7 +1545,7 @@ document.addEventListener("DOMContentLoaded", function () {
           } else {
             MessageSystem.showMessage(
               "error",
-              getTranslatedText("delete_error")
+              getTranslatedText("delete_error"),
             );
             /*MessageSystem.showMessage("error", getTranslation('delete_error', 'Помилка видалення.'));*/
           }
@@ -1402,7 +1625,7 @@ document.addEventListener("DOMContentLoaded", function () {
         } else {
           MessageSystem.showMessage(
             "error",
-            getTranslatedText("error_generic")
+            getTranslatedText("error_generic"),
           );
           /*MessageSystem.showMessage('error', getTranslation('error_generic'));*/
         }
@@ -1422,21 +1645,21 @@ document.addEventListener("DOMContentLoaded", function () {
       const baseUrl = window.location.origin + window.location.pathname;
       const shareUrl = `${baseUrl}?highlight_post=${postId}`;
 
-      const textSpan = btn.querySelector('span');
-      const originalText = textSpan ? textSpan.textContent : '';
+      const textSpan = btn.querySelector("span");
+      const originalText = textSpan ? textSpan.textContent : "";
 
       navigator.clipboard
         .writeText(shareUrl)
         .then(() => {
           // Add copied state
-          btn.classList.add('copied');
+          btn.classList.add("copied");
           if (textSpan) {
-            textSpan.textContent = 'Скопировано';
+            textSpan.textContent = "Скопировано";
           }
 
           // Reset after 2 seconds
           setTimeout(() => {
-            btn.classList.remove('copied');
+            btn.classList.remove("copied");
             if (textSpan) {
               textSpan.textContent = originalText;
             }
@@ -1445,7 +1668,7 @@ document.addEventListener("DOMContentLoaded", function () {
         .catch(() => {
           MessageSystem.showMessage(
             "warning",
-            getTranslatedText("link_copy_error")
+            getTranslatedText("link_copy_error"),
           );
           /*MessageSystem.showMessage('error', getTranslation('link_copy_error'));*/
         });
@@ -1456,7 +1679,9 @@ document.addEventListener("DOMContentLoaded", function () {
     const scrollBtn = e.target.closest(".js-scrollToComments");
     if (scrollBtn) {
       const postEl = scrollBtn.closest(".forum__itemPost");
-      const commentInput = postEl?.querySelector(".js-forumCommentForm input[name='comment']");
+      const commentInput = postEl?.querySelector(
+        ".js-forumCommentForm input[name='comment']",
+      );
       if (commentInput) {
         commentInput.scrollIntoView({ behavior: "smooth", block: "center" });
         commentInput.focus();
@@ -1497,9 +1722,18 @@ document.addEventListener("DOMContentLoaded", function () {
     const block = btn.closest(".forum__itemPost__comment__textBlock");
     const body = block?.querySelector(".forum__itemPost__comment__body");
     if (!body) return;
+    const commentEl = btn.closest(".forum__itemPost__comment");
     const expanded = body.classList.toggle("is-forumCommentExpanded");
     btn.textContent = expanded
       ? btn.dataset.hide || forumUiStrings().hide
       : btn.dataset.show || forumUiStrings().showAll;
+
+    if (!expanded && commentEl) {
+      const rect = commentEl.getBoundingClientRect();
+      const inView = rect.top >= 0 && rect.top < window.innerHeight * 0.5;
+      if (!inView) {
+        commentEl.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    }
   });
 });

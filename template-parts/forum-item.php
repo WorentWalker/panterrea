@@ -120,9 +120,10 @@ $top_count = count($top_level_comments);
                     data-post-id="<?php echo esc_attr($post_id); ?>"
                     aria-label="<?php esc_attr_e('Коментарі', 'panterrea_v1'); ?>">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M12 2.99023C16.9707 2.99023 21 7.01952 21 11.9902C21 16.9609 16.9707 20.9902 12 20.9902C10.7385 20.9902 9.54001 20.7307 8.45312 20.2637L7.99414 20.0518C7.42656 19.7623 6.77345 19.6882 6.15527 19.8438L6.14746 19.8457L6.14062 19.8477L3.91406 20.4434C3.86356 20.4566 3.81021 20.4569 3.75977 20.4434C3.70906 20.4297 3.66312 20.4023 3.62598 20.3652C3.58878 20.328 3.56147 20.2813 3.54785 20.2305C3.53434 20.1798 3.53429 20.1259 3.54785 20.0752L4.14355 17.8496L4.14746 17.834C4.30206 17.2166 4.2266 16.5646 3.9375 15.998H3.93848C3.31928 14.7537 2.99786 13.3821 3 11.9922V11.9902C3 7.01952 7.02929 2.99024 12 2.99023Z" stroke="currentColor" stroke-width="2"/>
+                    <path d="M7.59961 11.2402C7.8401 11.2402 8.06251 11.3301 8.21875 11.4766C8.37329 11.6215 8.4502 11.8076 8.4502 11.9902C8.4502 12.1729 8.37329 12.359 8.21875 12.5039C8.06251 12.6504 7.8401 12.7402 7.59961 12.7402C7.35927 12.7401 7.1376 12.6503 6.98145 12.5039C6.82684 12.359 6.75 12.173 6.75 11.9902C6.75 11.8075 6.82684 11.6215 6.98145 11.4766C7.1376 11.3302 7.35927 11.2403 7.59961 11.2402ZM12 11.2402C12.2404 11.2402 12.4619 11.3302 12.6182 11.4766C12.7728 11.6215 12.8496 11.8075 12.8496 11.9902C12.8496 12.173 12.7728 12.359 12.6182 12.5039C12.4619 12.6503 12.2404 12.7402 12 12.7402C11.7596 12.7402 11.5381 12.6503 11.3818 12.5039C11.2272 12.359 11.1504 12.173 11.1504 11.9902C11.1504 11.8075 11.2272 11.6215 11.3818 11.4766C11.5381 11.3302 11.7596 11.2402 12 11.2402ZM16.4004 11.2402C16.6407 11.2403 16.8624 11.3302 17.0186 11.4766C17.1732 11.6215 17.25 11.8075 17.25 11.9902C17.25 12.173 17.1732 12.359 17.0186 12.5039C16.8624 12.6503 16.6407 12.7401 16.4004 12.7402C16.1599 12.7402 15.9375 12.6504 15.7812 12.5039C15.6267 12.359 15.5498 12.1729 15.5498 11.9902C15.5498 11.8076 15.6267 11.6215 15.7812 11.4766C15.9375 11.3301 16.1599 11.2402 16.4004 11.2402Z" fill="currentColor" stroke="currentColor" stroke-width="1.5"/>
                 </svg>
-                <span class="forum__itemPost__actionLabel body2"><?php echo $top_count > 0 ? $top_count : ''; ?></span>
+                <span class="forum__itemPost__actionLabel body2 js-forumTopCommentsCount"><?php echo $top_count > 0 ? $top_count : ''; ?></span>
             </button>
 
             <!-- Share -->
@@ -158,9 +159,11 @@ $top_count = count($top_level_comments);
                 <span class="error caption"></span>
             </div>
             <div class="forum__commentForm__toolbar">
-                <button type="button" class="btn btn__commentCancel js-forumCommentCancel button-medium">
+                <?php if ($is_user_logged) : ?>
+                <button type="button" class="btn btn__commentCancel js-forumCommentCancel button-medium" disabled>
                     <?php _e('Скасувати', 'panterrea_v1'); ?>
                 </button>
+                <?php endif; ?>
                 <button class="btn btn__commentSubmit js-forumCommentSubmit button-medium" type="submit">
                     <?php if (!$is_user_logged) : ?>
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" class="forum__commentLock">

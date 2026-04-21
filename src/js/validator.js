@@ -945,7 +945,7 @@ validator.addRules("adName", [
 validator.addRules("adCategory", [Validator.rules.isNotEmpty]);
 validator.addRules("adDesc", [
   Validator.rules.isNotEmpty,
-  Validator.rules.maxLength(1000),
+  Validator.rules.maxLength(2000),
 ]);
 validator.addRules("adType", [Validator.rules.isNotEmpty]);
 /*validator.addRules('adPrice', [Validator.rules.isNotEmpty, Validator.rules.isPrice]);*/

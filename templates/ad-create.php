@@ -151,13 +151,13 @@ get_header();
                                 class="required">*</span></label>
                         <textarea class="body2" name="adDesc" id="adDesc"
                             placeholder="<?php _e('Вкажіть породу, вік, кількість, стан...', 'panterrea_v1'); ?>"
-                            data-symbolCount="1000"></textarea>
+                            data-symbolCount="2000"></textarea>
                         <div class="input__formAd__helperVal">
                             <span class="error caption"></span>
                             <span class="symbolCount caption">
                                 <span
                                     class="symbolCount__label"><?php _e('Використано символів', 'panterrea_v1'); ?></span>
-                                <span class="symbolCount__value">0/1000</span>
+                                <span class="symbolCount__value">0/2000</span>
                             </span>
                         </div>
                     </div>

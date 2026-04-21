@@ -65,6 +65,7 @@ $forum_sidebar_categories = get_categories([
     'order' => 'ASC',
     'hide_empty' => false,
 ]);
+$forum_sidebar_categories = panterrea_forum_categories_other_last($forum_sidebar_categories);
 
 /*global $currentLang;*/
 ?>
@@ -98,7 +99,12 @@ $forum_sidebar_categories = get_categories([
                         aria-label="<?php esc_attr_e('Шукати', 'panterrea_v1'); ?>"></button>
                 </div>
                 <button type="button" class="forum__filtersToggle js-forumFiltersToggle">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="11" y1="18" x2="13" y2="18"/></svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="4" y1="6" x2="20" y2="6" />
+                        <line x1="8" y1="12" x2="16" y2="12" />
+                        <line x1="11" y1="18" x2="13" y2="18" />
+                    </svg>
                     <?php esc_html_e('Фільтри', 'panterrea_v1'); ?>
                 </button>
             </div>
@@ -188,6 +194,7 @@ $forum_sidebar_categories = get_categories([
                                         <?php endforeach; ?>
                                     </div>
                                     <?php endif; ?>
+                                    <div id="composerCatInputs" hidden aria-hidden="true"></div>
 
                                     <input type="file" id="mediaUploadInput" name="files" accept="image/*,video/*"
                                         style="display:none;" multiple>
@@ -211,23 +218,25 @@ $forum_sidebar_categories = get_categories([
                                                 </svg>
 
                                                 <span
-                                                    class="body2"><?php esc_html_e('Додати зображення', 'panterrea_v1'); ?></span>
+                                                    class="body2"><?php esc_html_e('Прикріпити', 'panterrea_v1'); ?></span>
                                             </button>
                                         </div>
 
                                         <div class="forum__composer__actions">
                                             <?php if (!$is_logged) : ?>
                                             <span class="forum__composer__guestHint caption">
-                                                <?php 
-                                                    $login_url = wp_login_url();
-                                                    $msg = sprintf(
-                                                        __('Публікація доступна <u><a href="%s">авторизованим</a></u> користувачам', 'panterrea_v1'),
-                                                        esc_url($login_url)
-                                                    );
-                                               
-                                                    echo wp_kses($msg, array('u' => array()));
+                                                <?php
+                                                echo wp_kses(
+                                                    __('Публікація доступна <button type="button" class="forum__composer__guestHintLink js-forumOpenLoginPopup" aria-controls="forumLoginPopup">авторизованим</button> користувачам', 'panterrea_v1'),
+                                                    [
+                                                        'button' => [
+                                                            'type' => true,
+                                                            'class' => true,
+                                                            'aria-controls' => true,
+                                                        ],
+                                                    ]
+                                                );
                                                 ?>
-
                                             </span>
                                             <?php endif; ?>
                                             <div class="form__editBtn hidden">
