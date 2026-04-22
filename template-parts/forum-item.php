@@ -152,9 +152,13 @@ $top_count = count($top_level_comments);
               data-post-id="<?php echo $post_id; ?>"
               data-logged-in="<?php echo $is_user_logged ? '1' : '0'; ?>"
               enctype="multipart/form-data">
-            <div class="input__form">
-                <input class="body2" type="text" name="comment" id="comment-<?php echo $post_id; ?>"
-                       placeholder="<?php _e('Коментар', 'panterrea_v1'); ?>"/>
+            <div class="input__form input__form--textarea">
+                <textarea class="body2 js-forumCommentField js-autoGrow" name="comment"
+                          id="comment-<?php echo $post_id; ?>"
+                          rows="3"
+                          data-min-rows="3"
+                          data-max-rows="8"
+                          placeholder="<?php _e('Коментар', 'panterrea_v1'); ?>"></textarea>
                 <label class="body2" for="comment-<?php echo $post_id; ?>"><?php _e('Коментар', 'panterrea_v1'); ?></label>
                 <span class="error caption"></span>
             </div>

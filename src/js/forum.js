@@ -616,7 +616,6 @@ document.addEventListener("DOMContentLoaded", function () {
         return;
       }
 
-      // Insert inline span at the end of the last paragraph (or content itself)
       const btn = document.createElement("button");
       btn.type = "button";
       btn.className = "forum__itemPost__readMore";
@@ -986,9 +985,12 @@ document.addEventListener("DOMContentLoaded", function () {
       btn.addEventListener("click", () => {
         const si = getActiveForumSearch();
         if (!si) return;
-        const query = si.value.trim();
-        if (query === "") return;
-        runForumSearch(query);
+        if (si.value !== "") {
+          si.value = "";
+          si.focus();
+          refreshForumFeed();
+          return;
+        }
       });
     });
 
@@ -1202,6 +1204,7 @@ document.addEventListener("DOMContentLoaded", function () {
         if (chip.dataset.catName === catName) {
           chip.classList.add("is-active");
           chip.setAttribute("aria-pressed", "true");
+          updateChipIcon(chip);
         }
       });
     });
@@ -1266,6 +1269,8 @@ document.addEventListener("DOMContentLoaded", function () {
           }
           commentForm.reset();
           syncCommentCancelState(commentForm);
+          const grownField = commentForm.querySelector(".js-autoGrow");
+          if (grownField) autoGrowField(grownField);
           clearCommentDraft(postId);
           MessageSystem.showMessage(
             "success",
@@ -1291,7 +1296,7 @@ document.addEventListener("DOMContentLoaded", function () {
     if (!commentForm) return;
     e.preventDefault();
 
-    const commentInput = commentForm.querySelector('input[name="comment"]');
+    const commentInput = commentForm.querySelector('[name="comment"]');
     const commentText = commentInput ? commentInput.value.trim() : "";
     const postId = commentForm.dataset.postId;
     const isLoggedIn = commentForm.dataset.loggedIn === "1";
@@ -1316,6 +1321,8 @@ document.addEventListener("DOMContentLoaded", function () {
     commentForm.reset();
     const inputWrapper = commentForm.querySelector(".input__form");
     if (inputWrapper) inputWrapper.classList.remove("notValid");
+    const grownField = commentForm.querySelector(".js-autoGrow");
+    if (grownField) autoGrowField(grownField);
     syncCommentCancelState(commentForm);
   });
 
@@ -1323,13 +1330,13 @@ document.addEventListener("DOMContentLoaded", function () {
   function syncCommentCancelState(commentForm) {
     const cancelBtn = commentForm.querySelector(".js-forumCommentCancel");
     if (!cancelBtn) return;
-    const input = commentForm.querySelector('input[name="comment"]');
+    const input = commentForm.querySelector('[name="comment"]');
     const hasValue = !!(input && input.value.trim());
     cancelBtn.disabled = !hasValue;
   }
 
   document.addEventListener("input", function (e) {
-    const input = e.target.closest('.js-forumCommentForm input[name="comment"]');
+    const input = e.target.closest('.js-forumCommentForm [name="comment"]');
     if (!input) return;
     const form = input.closest(".js-forumCommentForm");
     if (form) syncCommentCancelState(form);
@@ -1339,6 +1346,43 @@ document.addEventListener("DOMContentLoaded", function () {
     .querySelectorAll(".js-forumCommentForm")
     .forEach((form) => syncCommentCancelState(form));
 
+  /* ── Auto-grow for comment textarea (min 3 rows, max 8 rows) ── */
+  function autoGrowField(field) {
+    if (!field || field.tagName !== "TEXTAREA") return;
+    const style = window.getComputedStyle(field);
+    const lineHeight = parseFloat(style.lineHeight) || 22;
+    const paddingY =
+      (parseFloat(style.paddingTop) || 0) +
+      (parseFloat(style.paddingBottom) || 0);
+    const borderY =
+      (parseFloat(style.borderTopWidth) || 0) +
+      (parseFloat(style.borderBottomWidth) || 0);
+    const minRows = parseInt(field.dataset.minRows, 10) || 3;
+    const maxRows = parseInt(field.dataset.maxRows, 10) || 8;
+    const minHeight = lineHeight * minRows + paddingY + borderY;
+    const maxHeight = lineHeight * maxRows + paddingY + borderY;
+
+    field.style.height = "auto";
+    const next = Math.min(
+      Math.max(field.scrollHeight + borderY, minHeight),
+      maxHeight,
+    );
+    field.style.height = next + "px";
+    field.style.overflowY = field.scrollHeight + borderY > maxHeight
+      ? "auto"
+      : "hidden";
+  }
+
+  document
+    .querySelectorAll(".js-forumCommentForm .js-autoGrow")
+    .forEach((field) => autoGrowField(field));
+
+  document.addEventListener("input", function (e) {
+    const field = e.target.closest(".js-forumCommentForm .js-autoGrow");
+    if (!field) return;
+    autoGrowField(field);
+  });
+
   /* ── On page load: restore comment draft if logged in ── */
   (function restoreCommentDrafts() {
     document
@@ -1347,9 +1391,10 @@ document.addEventListener("DOMContentLoaded", function () {
         const postId = form.dataset.postId;
         const draft = loadCommentDraft(postId);
         if (!draft) return;
-        const input = form.querySelector('input[name="comment"]');
+        const input = form.querySelector('[name="comment"]');
         if (input) {
           input.value = draft;
+          if (input.classList.contains("js-autoGrow")) autoGrowField(input);
           clearCommentDraft(postId);
           /* Auto-submit after short delay so UI is ready */
           setTimeout(() => submitComment(form, draft), 400);
@@ -1654,7 +1699,7 @@ document.addEventListener("DOMContentLoaded", function () {
           // Add copied state
           btn.classList.add("copied");
           if (textSpan) {
-            textSpan.textContent = "Скопировано";
+            textSpan.textContent = "Скопійовано";
           }
 
           // Reset after 2 seconds
@@ -1680,7 +1725,7 @@ document.addEventListener("DOMContentLoaded", function () {
     if (scrollBtn) {
       const postEl = scrollBtn.closest(".forum__itemPost");
       const commentInput = postEl?.querySelector(
-        ".js-forumCommentForm input[name='comment']",
+        ".js-forumCommentForm [name='comment']",
       );
       if (commentInput) {
         commentInput.scrollIntoView({ behavior: "smooth", block: "center" });
