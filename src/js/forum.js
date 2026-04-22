@@ -621,9 +621,7 @@ document.addEventListener("DOMContentLoaded", function () {
       btn.className = "forum__itemPost__readMore";
       btn.textContent = "Показати більше";
 
-      const lastP = content.querySelector("p:last-child") || content;
-      lastP.appendChild(document.createTextNode(" "));
-      lastP.appendChild(btn);
+      content.insertAdjacentElement("afterend", btn);
 
       btn.addEventListener("click", () => {
         const isCollapsed = content.classList.contains("is-clamped");
