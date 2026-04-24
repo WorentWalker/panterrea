@@ -282,6 +282,7 @@ require_once get_template_directory() . '/inc/adminCustomView.php';
 require_once get_template_directory() . '/inc/moderationPanel.php';
 require_once get_template_directory() . '/inc/breadcrumbs.php';
 require_once get_template_directory() . '/inc/cron.php';
+require_once get_template_directory() . '/inc/currency.php';
 require_once get_template_directory() . '/inc/esputnik.php';
 require_once get_template_directory() . '/inc/stripeAPI/init.php';
 require_once get_template_directory() . '/inc/awsSDK/aws-autoloader.php';
@@ -667,6 +668,27 @@ add_filter('cmplz_whitelisted_script_tags', function ($tags) {
     $tags[] = 'main.js';
     return $tags;
 }, 10, 1);
+
+/**
+ * Microsoft Clarity — heatmaps & session recordings.
+ * Replace CLARITY_PROJECT_ID with your real Project ID from clarity.microsoft.com.
+ * Skipped for logged-in administrators to keep data clean.
+ */
+add_action('wp_head', function () {
+    if (current_user_can('manage_options')) {
+        return;
+    }
+    $clarity_id = 'CLARITY_PROJECT_ID';
+    ?>
+    <script type="text/javascript">
+        (function(c,l,a,r,i,t,y){
+            c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+            t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+            y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+        })(window,document,"clarity","script","<?php echo esc_js($clarity_id); ?>");
+    </script>
+    <?php
+}, 5);
 
 /**
 * Register styles and scripts.
@@ -1132,6 +1154,104 @@ $headers = [
     }
 
     add_action('init', 'confirm_email');
+
+    /**
+     * Admin: ручне керування статусом верифікації email.
+     */
+    function panterrea_render_email_verified_field($user)
+    {
+        if (!current_user_can('edit_users')) {
+            return;
+        }
+
+        $verified = (bool) get_user_meta($user->ID, 'email_verified', true);
+        wp_nonce_field('panterrea_toggle_email_verified', 'panterrea_email_verified_nonce');
+        ?>
+        <h2><?php esc_html_e('Верифікація email', 'panterrea_v1'); ?></h2>
+        <table class="form-table" role="presentation">
+            <tr>
+                <th scope="row">
+                    <label for="panterrea_email_verified"><?php esc_html_e('Email підтверджено', 'panterrea_v1'); ?></label>
+                </th>
+                <td>
+                    <label>
+                        <input type="checkbox"
+                               name="panterrea_email_verified"
+                               id="panterrea_email_verified"
+                               value="1"
+                            <?php checked($verified, true); ?> />
+                        <?php esc_html_e('Позначити email цього користувача як верифікований', 'panterrea_v1'); ?>
+                    </label>
+                    <p class="description">
+                        <?php esc_html_e('Увімкніть, щоб вручну підтвердити email користувача без переходу за посиланням із листа. Вимкніть, щоб скинути верифікацію.', 'panterrea_v1'); ?>
+                    </p>
+                </td>
+            </tr>
+        </table>
+        <?php
+    }
+    add_action('show_user_profile', 'panterrea_render_email_verified_field');
+    add_action('edit_user_profile', 'panterrea_render_email_verified_field');
+
+    function panterrea_save_email_verified_field($user_id)
+    {
+        if (!current_user_can('edit_user', $user_id)) {
+            return;
+        }
+
+        $nonce = isset($_POST['panterrea_email_verified_nonce'])
+            ? sanitize_text_field(wp_unslash($_POST['panterrea_email_verified_nonce']))
+            : '';
+
+        if (!$nonce || !wp_verify_nonce($nonce, 'panterrea_toggle_email_verified')) {
+            return;
+        }
+
+        $new_state = !empty($_POST['panterrea_email_verified']);
+        $old_state = (bool) get_user_meta($user_id, 'email_verified', true);
+
+        if ($new_state === $old_state) {
+            return;
+        }
+
+        if ($new_state) {
+            update_user_meta($user_id, 'email_verified', true);
+            delete_user_meta($user_id, 'email_confirmation_token');
+
+            if (function_exists('add_notification')) {
+                add_notification(
+                    $user_id,
+                    'email_verified',
+                    __('Email успішно підтверджено.', 'panterrea_v1')
+                );
+            }
+        } else {
+            delete_user_meta($user_id, 'email_verified');
+        }
+    }
+    add_action('personal_options_update', 'panterrea_save_email_verified_field');
+    add_action('edit_user_profile_update', 'panterrea_save_email_verified_field');
+
+    function panterrea_users_columns_email_verified($columns)
+    {
+        $columns['email_verified'] = __('Email підтверджено', 'panterrea_v1');
+        return $columns;
+    }
+    add_filter('manage_users_columns', 'panterrea_users_columns_email_verified');
+
+    function panterrea_users_custom_column_email_verified($output, $column_name, $user_id)
+    {
+        if ($column_name !== 'email_verified') {
+            return $output;
+        }
+
+        $verified = (bool) get_user_meta($user_id, 'email_verified', true);
+
+        return $verified
+            ? '<span style="color:#2a9d8f;font-weight:600;">&#10003; ' . esc_html__('Так', 'panterrea_v1') . '</span>'
+            : '<span style="color:#b00020;">&#10007; ' . esc_html__('Ні', 'panterrea_v1') . '</span>';
+    }
+    add_filter('manage_users_custom_column', 'panterrea_users_custom_column_email_verified', 10, 3);
 
     /**
     * @throws Exception
@@ -2013,19 +2133,18 @@ $headers = [
             */
             function get_catalog_max_price($category_slug = 'all')
             {
+            // Use the UAH-equivalent meta so USD ads are taken into account
+            // (slider is presented in грн). See inc/currency.php.
             $args = [
             'post_type' => 'catalog_post',
             'posts_per_page' => 1,
             'post_status' => 'publish',
             'meta_query' => [
             ['key' => '_is_active', 'value' => '1', 'compare' => '='],
-            ['key' => 'catalog_post_currency', 'value' => 'грн', 'compare' => '='],
-            ['key' => 'catalog_post_price', 'compare' => 'EXISTS'],
-            ['key' => 'catalog_post_price', 'value' => '', 'compare' => '!='],
-            ['key' => 'catalog_post_price', 'value' => 0, 'compare' => '>', 'type' => 'NUMERIC'],
+            ['key' => 'catalog_post_price_uah', 'value' => 0, 'compare' => '>', 'type' => 'NUMERIC'],
             ],
             'orderby' => 'meta_value_num',
-            'meta_key' => 'catalog_post_price',
+            'meta_key' => 'catalog_post_price_uah',
             'order' => 'DESC',
             'fields' => 'ids',
             ];
@@ -2039,7 +2158,7 @@ $headers = [
             if (!$post_id) {
             return 1000000;
             }
-            $price = (int) get_post_meta($post_id, 'catalog_post_price', true);
+            $price = (int) get_post_meta($post_id, 'catalog_post_price_uah', true);
             return $price > 0 ? $price : 1000000;
             }
 
@@ -2138,8 +2257,10 @@ $headers = [
             }
 
             if ($price_min > 0 || $price_max < 1000000 || $no_price) {
+            // The slider is displayed in грн, so filter against the UAH-equivalent
+            // so that USD ads are correctly included in the selected range.
             $price_in_range = [
-            'key' => 'catalog_post_price',
+            'key' => 'catalog_post_price_uah',
             'value' => [$price_min, $price_max],
             'type' => 'NUMERIC',
             'compare' => 'BETWEEN',
@@ -2149,9 +2270,9 @@ $headers = [
             'relation' => 'OR',
             [
             'relation' => 'OR',
-            ['key' => 'catalog_post_price', 'compare' => 'NOT EXISTS'],
-            ['key' => 'catalog_post_price', 'value' => '', 'compare' => '='],
-            ['key' => 'catalog_post_price', 'value' => 0, 'compare' => '=', 'type' => 'NUMERIC'],
+            ['key' => 'catalog_post_price_uah', 'compare' => 'NOT EXISTS'],
+            ['key' => 'catalog_post_price_uah', 'value' => '', 'compare' => '='],
+            ['key' => 'catalog_post_price_uah', 'value' => 0, 'compare' => '=', 'type' => 'NUMERIC'],
             ],
             $price_in_range,
             ];
@@ -2162,19 +2283,23 @@ $headers = [
 
             if (!empty($sort)) {
             if (str_contains($sort, 'price')) {
-            $currency = str_contains($sort, 'uah') ? 'грн' : '$';
+            // Sort HRN (грн) and DOL ($) together using the cached UAH-equivalent
+            // stored in `catalog_post_price_uah`. The post's original price and
+            // currency are always shown to the user — the UAH value is internal
+            // sorting metadata only. See inc/currency.php.
             $order = str_contains($sort, 'asc') ? 'ASC' : 'DESC';
 
             $query_args['meta_query'][] = [
-            'key' => 'catalog_post_currency',
-            'value' => $currency,
-            'compare' => '=',
+            'key' => 'catalog_post_price_uah',
+            'value' => 0,
+            'compare' => '>',
+            'type' => 'NUMERIC',
             ];
             $query_args['orderby'] = [
             'meta_value_num' => $order,
             'date' => 'DESC'
             ];
-            $query_args['meta_key'] = 'catalog_post_price';
+            $query_args['meta_key'] = 'catalog_post_price_uah';
             }
             }
 
