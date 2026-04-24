@@ -24,7 +24,7 @@ jobs:
       - name: Copy specific directories
         run: |
           # Copy sources to remote
-          
+
           if [[ "${{ github.ref_name }}" == "main" ]]; then
             echo "Deploying to PRODUCTION"
             SERVER="63.176.10.235"
@@ -32,5 +32,20 @@ jobs:
             echo "Deploying to DEV"
             SERVER="3.79.239.99"
           fi
-          
+
+          # Make sure rsync is present on the remote host (Bitnami AMIs don't always ship it).
+          ssh -o StrictHostKeyChecking=no bitnami@$SERVER '
+            if ! command -v rsync >/dev/null 2>&1; then
+              echo "rsync not found on remote, installing..."
+              if command -v apt-get >/dev/null 2>&1; then
+                sudo apt-get update -y && sudo apt-get install -y rsync
+              elif command -v yum >/dev/null 2>&1; then
+                sudo yum install -y rsync
+              else
+                echo "No supported package manager found to install rsync" >&2
+                exit 1
+              fi
+            fi
+          '
+
           rsync -avz --progress -e "ssh -o StrictHostKeyChecking=no" ./*  bitnami@$SERVER:/opt/bitnami/wordpress/wp-content/themes/Panterrea/
