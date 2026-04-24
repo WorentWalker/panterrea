@@ -113,8 +113,7 @@ function render_moderation_page()
                     $author_name = get_user_meta($author_id, 'name', true) ?: get_the_author_meta('display_name', $author_id);
                     
                     $catalog_data = get_field('catalog_post', $post_id);
-                    $price = isset($catalog_data['price']) ? $catalog_data['price'] : '—';
-                    $currency = isset($catalog_data['currency']) ? $catalog_data['currency'] : '';
+                    [$mp_price, $mp_currency] = panterrea_get_post_price_pair((int) $post_id, $catalog_data);
                     
                     $categories = get_the_terms($post_id, 'catalog_category');
                     $category_names = $categories ? implode(', ', wp_list_pluck($categories, 'name')) : '—';
@@ -141,7 +140,7 @@ function render_moderation_page()
                             </a>
                         </td>
                         <td><?php echo esc_html($category_names); ?></td>
-                        <td><?php echo $price !== '—' ? number_format($price, 2) . ' ' . $currency : '—'; ?></td>
+                        <td><?php echo panterrea_format_price_display($mp_price, $mp_currency); ?></td>
                         <td><?php echo get_the_date('d.m.Y H:i'); ?></td>
                         <td class="status-cell"><?php echo $status_label[$post_status] ?? $post_status; ?></td>
                         <td class="actions-cell">

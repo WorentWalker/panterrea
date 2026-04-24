@@ -33,8 +33,8 @@ get_header();
     <div class="container">
 
         <div id="stepInfo" class="adCreate__innerForm">
-            <div class="adCreate__innerForm__title h4"><?php _e('Створення оголошення', 'panterrea_v1'); ?></div>
             <?php catalog_breadcrumbs(); ?>
+            <div class="adCreate__innerForm__title h4"><?php _e('Створення оголошення', 'panterrea_v1'); ?></div>
 
             <div class="adCreate__form">
                 <div class="adCreate__form__title h6"><?php _e('Опишіть ваше оголошення', 'panterrea_v1'); ?></div>
@@ -151,13 +151,13 @@ get_header();
                                 class="required">*</span></label>
                         <textarea class="body2" name="adDesc" id="adDesc"
                             placeholder="<?php _e('Вкажіть породу, вік, кількість, стан...', 'panterrea_v1'); ?>"
-                            data-symbolCount="1000"></textarea>
+                            data-symbolCount="2000"></textarea>
                         <div class="input__formAd__helperVal">
                             <span class="error caption"></span>
                             <span class="symbolCount caption">
                                 <span
                                     class="symbolCount__label"><?php _e('Використано символів', 'panterrea_v1'); ?></span>
-                                <span class="symbolCount__value">0/1000</span>
+                                <span class="symbolCount__value">0/2000</span>
                             </span>
                         </div>
                     </div>

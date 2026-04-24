@@ -30,14 +30,17 @@ $price_max_formatted = $args['price_max_formatted'] ?? number_format($price_max,
             <?php esc_html_e('Категорії товарів', 'panterrea_v1'); ?>
         </h4>
         <div class="catalog__sidebar__checkboxes">
-            <?php $catalog_base_url = defined('URL_CATALOG') ? URL_CATALOG : home_url('/catalog'); ?>
+            <?php
+            $catalog_base_url = defined('URL_CATALOG') ? URL_CATALOG : home_url('/catalog');
+            $cats_visible = array_slice($terms, 0, 4);
+            $cats_extra   = array_slice($terms, 4);
+            ?>
             <div class="catalog__sidebar__checkbox dropdown__item" data-filter-slug="all" data-filter-section="category" data-available="1">
                 <input type="checkbox" id="category-all" class="js-catalogFilter" data-category="all"
-                    data-category-url="<?php echo esc_url($catalog_base_url); ?>"
-                    <?php checked($current_category, 'all'); ?>>
+                    data-category-url="<?php echo esc_url($catalog_base_url); ?>">
                 <label class="body2" for="category-all"><?php esc_html_e('Всі', 'panterrea_v1'); ?></label>
             </div>
-            <?php foreach ($terms as $term) : ?>
+            <?php foreach ($cats_visible as $term) : ?>
             <div class="catalog__sidebar__checkbox dropdown__item" data-filter-slug="<?php echo esc_attr($term->slug); ?>" data-filter-section="category" data-available="1">
                 <input type="checkbox" id="category-<?php echo esc_attr($term->slug); ?>" class="js-catalogFilter"
                     data-category="<?php echo esc_attr($term->slug); ?>"
@@ -48,8 +51,27 @@ $price_max_formatted = $args['price_max_formatted'] ?? number_format($price_max,
                 </label>
             </div>
             <?php endforeach; ?>
+            <?php if (!empty($cats_extra)) : ?>
+            <div class="catalog__sidebar__extraCats" hidden>
+                <?php foreach ($cats_extra as $term) : ?>
+                <div class="catalog__sidebar__checkbox dropdown__item" data-filter-slug="<?php echo esc_attr($term->slug); ?>" data-filter-section="category" data-available="1">
+                    <input type="checkbox" id="category-<?php echo esc_attr($term->slug); ?>" class="js-catalogFilter"
+                        data-category="<?php echo esc_attr($term->slug); ?>"
+                        data-category-url="<?php echo esc_url(panterrea_get_catalog_category_link($term)); ?>"
+                        <?php checked($current_category, $term->slug); ?>>
+                    <label class="body2" for="category-<?php echo esc_attr($term->slug); ?>">
+                        <?php echo esc_html($term->name); ?>
+                    </label>
+                </div>
+                <?php endforeach; ?>
+            </div>
+            <?php endif; ?>
         </div>
-        <a href="#" class="catalog__sidebar__showAll body2"><?php esc_html_e('Показати все', 'panterrea_v1'); ?></a>
+        <?php if (!empty($cats_extra)) : ?>
+        <button type="button" class="catalog__sidebar__showAll body2 js-catalogCatsToggle">
+            <?php esc_html_e('Показати більше', 'panterrea_v1'); ?>
+        </button>
+        <?php endif; ?>
     </div>
     <?php endif; ?>
 
@@ -60,7 +82,7 @@ $price_max_formatted = $args['price_max_formatted'] ?? number_format($price_max,
         </h4>
         <div class="catalog__sidebar__checkboxes">
             <div class="catalog__sidebar__checkbox dropdown__item" data-filter-slug="tags-all" data-filter-section="ad_type" data-available="1">
-                <input type="checkbox" id="tags-all" checked>
+                <input type="checkbox" id="tags-all">
                 <label class="body2" for="tags-all"><?php esc_html_e('Всі', 'panterrea_v1'); ?></label>
             </div>
             <?php foreach ($ad_type_tags as $tag) : ?>
@@ -109,7 +131,7 @@ $price_max_formatted = $args['price_max_formatted'] ?? number_format($price_max,
         <div class="catalog__sidebar__checkboxes">
             <?php if (empty($ad_type_tags)) : ?>
             <div class="catalog__sidebar__checkbox dropdown__item" data-filter-slug="tags-all" data-filter-section="condition" data-available="1">
-                <input type="checkbox" id="tags-all" checked>
+                <input type="checkbox" id="tags-all">
                 <label class="body2" for="tags-all"><?php esc_html_e('Всі', 'panterrea_v1'); ?></label>
             </div>
             <?php endif; ?>
@@ -124,4 +146,10 @@ $price_max_formatted = $args['price_max_formatted'] ?? number_format($price_max,
         </div>
     </div>
     <?php endif; ?>
+
+    <div class="catalog__sidebar__hideBtn">
+        <button type="button" class="catalog__filtersHide js-catalogFiltersHide">
+            <?php esc_html_e('Сховати фільтри', 'panterrea_v1'); ?>
+        </button>
+    </div>
 </aside>

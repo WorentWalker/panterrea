@@ -18,6 +18,207 @@ define('URL_EDITAD', home_url('/edit-ad'));
 define('URL_BOOSTAD', home_url('/boost-ad'));
 define('URL_MESSAGES', home_url('/user-messages'));
 define('URL_FORUM', home_url('/forum'));
+
+/**
+ * Forum feed: sanitize category term IDs from request values.
+ *
+ * @param array<int|string> $ids
+ * @return int[]
+ */
+function panterrea_forum_sanitize_cat_ids($ids)
+{
+    $out = [];
+    foreach ((array) $ids as $id) {
+        $i = (int) $id;
+        if ($i > 0) {
+            $out[] = $i;
+        }
+    }
+
+    return array_values(array_unique($out));
+}
+
+/**
+ * @return int[]
+ */
+function panterrea_forum_get_cat_ids_from_request($request_key = 'forum_cat')
+{
+    if (empty($_GET[$request_key])) {
+        return [];
+    }
+    $raw = wp_unslash($_GET[$request_key]);
+    if (is_array($raw)) {
+        return panterrea_forum_sanitize_cat_ids($raw);
+    }
+
+    return panterrea_forum_sanitize_cat_ids(explode(',', (string) $raw));
+}
+
+/**
+ * @param int[] $cat_ids
+ * @return array<int, array<string, mixed>>
+ */
+function panterrea_forum_tax_query_for_categories(array $cat_ids)
+{
+    $cat_ids = panterrea_forum_sanitize_cat_ids($cat_ids);
+    if ($cat_ids === []) {
+        return [];
+    }
+
+    return [
+        [
+            'taxonomy' => 'category',
+            'field' => 'term_id',
+            'terms' => $cat_ids,
+            'operator' => 'IN',
+        ],
+    ];
+}
+
+/**
+ * @return int[]
+ */
+function panterrea_forum_cat_ids_from_post_param()
+{
+    if (empty($_POST['forum_cats'])) {
+        return [];
+    }
+    $raw = wp_unslash($_POST['forum_cats']);
+    if (!is_array($raw)) {
+        $raw = [$raw];
+    }
+
+    return panterrea_forum_sanitize_cat_ids($raw);
+}
+
+/**
+ * Forum list sort: all (chronological), popular, mine.
+ *
+ * @return string all|popular|mine
+ */
+function panterrea_forum_sanitize_sort($value)
+{
+    $value = is_string($value) ? strtolower(sanitize_key($value)) : '';
+    if ($value === 'popular') {
+        return 'popular';
+    }
+    if ($value === 'recent') {
+        return 'recent';
+    }
+    if ($value === 'mine' && is_user_logged_in()) {
+        return 'mine';
+    }
+
+    return 'all';
+}
+
+/**
+ * @return string all|popular|mine
+ */
+function panterrea_forum_get_sort_from_request()
+{
+    if (!empty($_GET['forum_sort'])) {
+        return panterrea_forum_sanitize_sort(wp_unslash($_GET['forum_sort']));
+    }
+    if (!empty($_GET['only_my']) && $_GET['only_my'] === '1' && is_user_logged_in()) {
+        return 'mine';
+    }
+
+    return 'all';
+}
+
+/**
+ * Keep catch-all "Інше" last (composer chips + sidebar), regardless of alphabetical order.
+ *
+ * @param array<int, WP_Term|mixed> $terms
+ * @return WP_Term[]
+ */
+function panterrea_forum_categories_other_last(array $terms)
+{
+    if ($terms === []) {
+        return [];
+    }
+    $other = [];
+    $rest = [];
+    foreach ($terms as $term) {
+        if (!$term instanceof WP_Term) {
+            continue;
+        }
+        $is_other = ($term->slug === 'inhe' || $term->name === 'Інше');
+        if ($is_other) {
+            $other[] = $term;
+        } else {
+            $rest[] = $term;
+        }
+    }
+
+    return array_merge($rest, $other);
+}
+
+function panterrea_forum_sync_like_count($post_id)
+{
+    $post_id = (int) $post_id;
+    if ($post_id <= 0) {
+        return;
+    }
+    $likes = get_post_meta($post_id, '_forum_likes', true);
+    $likes = is_array($likes) ? $likes : [];
+    update_post_meta($post_id, '_forum_like_count', count($likes));
+}
+
+function panterrea_forum_get_like_count($post_id)
+{
+    $post_id = (int) $post_id;
+    $stored = get_post_meta($post_id, '_forum_like_count', true);
+    if ($stored !== '' && $stored !== false && $stored !== null) {
+        return (int) $stored;
+    }
+    $likes = get_post_meta($post_id, '_forum_likes', true);
+
+    return is_array($likes) ? count($likes) : 0;
+}
+
+/**
+ * ORDER BY likes meta, then comment_count, then date.
+ */
+function panterrea_forum_clauses_popular_sort($clauses, $query)
+{
+    if (empty($GLOBALS['panterrea_forum_popular_order'])) {
+        return $clauses;
+    }
+    if (!$query instanceof WP_Query) {
+        return $clauses;
+    }
+    global $wpdb;
+    $clauses['join'] .= " LEFT JOIN {$wpdb->postmeta} AS panterrea_flc ON ({$wpdb->posts}.ID = panterrea_flc.post_id AND panterrea_flc.meta_key = '_forum_like_count') ";
+    $clauses['orderby'] = 'COALESCE(CAST(panterrea_flc.meta_value AS UNSIGNED), 0) DESC, ' . $wpdb->posts . '.comment_count DESC, ' . $wpdb->posts . '.post_date DESC';
+
+    return $clauses;
+}
+add_filter('posts_clauses', 'panterrea_forum_clauses_popular_sort', 10, 2);
+
+/**
+ * Ensure the 8 forum categories exist on every request.
+ * Runs once per day via transient cache.
+ */
+function panterrea_ensure_forum_categories()
+{
+    if (get_transient('panterrea_forum_cats_created')) {
+        return;
+    }
+    $names = [
+        'ВРХ', 'Бізнес та партнерства', 'Ветеринарія', 'Відео',
+        'Досвід', 'Знання та аналітика', 'Свинарство', 'Утримання ВРХ',
+    ];
+    foreach ($names as $name) {
+        if (!get_cat_ID($name)) {
+            wp_insert_term($name, 'category');
+        }
+    }
+    set_transient('panterrea_forum_cats_created', 1, DAY_IN_SECONDS);
+}
+add_action('init', 'panterrea_ensure_forum_categories');
+
 define('EMAIL_TEMPLATE_CONFIRMATION', __DIR__ . '/template-emails/confirmation-email.php');
 define('EMAIL_TEMPLATE_RESETPASS', __DIR__ . '/template-emails/reset-password-email.php');
 define('EMAIL_TEMPLATE_NOTIFICATION', __DIR__ . '/template-emails/notification-email.php');
@@ -56,6 +257,21 @@ if (!defined('TURNSTILE_SECRET_KEY')) {
     define('TURNSTILE_SECRET_KEY', '0x4AAAAAACb0K_5MgmXTvAw_7imhXPEK3OY');
 }
 
+// eSputnik API (реєстрація → контакт). Можна перевизначити у wp-config.php.
+if (!defined('ESPUTNIK_API_KEY')) {
+    define('ESPUTNIK_API_KEY', 'B7318846ED4E907E238F4D2935C06B4E');
+}
+if (!defined('ESPUTNIK_SUBSCRIBE_GROUPS')) {
+    define('ESPUTNIK_SUBSCRIBE_GROUPS', 'PanTerrea Registration');
+}
+if (!defined('ESPUTNIK_API_BASE')) {
+    define('ESPUTNIK_API_BASE', 'https://esputnik.com');
+}
+// Ключ події в eSputnik (Automation) — має збігатися з типом події у кабінеті.
+if (!defined('ESPUTNIK_REGISTRATION_EVENT_TYPE_KEY')) {
+    define('ESPUTNIK_REGISTRATION_EVENT_TYPE_KEY', 'Реєстрація нового користувача');
+}
+
 /**
  * Include
  */
@@ -66,6 +282,8 @@ require_once get_template_directory() . '/inc/adminCustomView.php';
 require_once get_template_directory() . '/inc/moderationPanel.php';
 require_once get_template_directory() . '/inc/breadcrumbs.php';
 require_once get_template_directory() . '/inc/cron.php';
+require_once get_template_directory() . '/inc/currency.php';
+require_once get_template_directory() . '/inc/esputnik.php';
 require_once get_template_directory() . '/inc/stripeAPI/init.php';
 require_once get_template_directory() . '/inc/awsSDK/aws-autoloader.php';
 
@@ -452,6 +670,27 @@ add_filter('cmplz_whitelisted_script_tags', function ($tags) {
 }, 10, 1);
 
 /**
+ * Microsoft Clarity — heatmaps & session recordings.
+ * Replace CLARITY_PROJECT_ID with your real Project ID from clarity.microsoft.com.
+ * Skipped for logged-in administrators to keep data clean.
+ */
+add_action('wp_head', function () {
+    if (current_user_can('manage_options')) {
+        return;
+    }
+    $clarity_id = 'CLARITY_PROJECT_ID';
+    ?>
+    <script type="text/javascript">
+        (function(c,l,a,r,i,t,y){
+            c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+            t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+            y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+        })(window,document,"clarity","script","<?php echo esc_js($clarity_id); ?>");
+    </script>
+    <?php
+}, 5);
+
+/**
 * Register styles and scripts.
 */
 add_action('wp_enqueue_scripts', function () {
@@ -488,7 +727,9 @@ wp_enqueue_script('message', get_template_directory_uri() . '/src/js/message.js'
 $email_confirmed = is_user_logged_in() && get_user_meta(get_current_user_id(), 'email_verified', true);
 $post_id = is_singular('catalog_post') ? get_the_ID() : null;
 
-wp_enqueue_script('main', get_template_directory_uri() . '/src/js/main.js', null, '2025.07.16', true);
+$main_js_path = get_template_directory() . '/src/js/main.js';
+$main_js_version = file_exists($main_js_path) ? filemtime($main_js_path) : '2025.07.16';
+wp_enqueue_script('main', get_template_directory_uri() . '/src/js/main.js', null, $main_js_version, true);
 wp_localize_script('main', 'mainObject', [
 'ajax_url' => admin_url('admin-ajax.php'),
 'loggedIn' => is_user_logged_in() ? 'true' : 'false',
@@ -602,9 +843,15 @@ if (is_page_template($forumTemplates)) {
 wp_enqueue_style('quill-css', 'https://cdn.quilljs.com/1.3.6/quill.snow.css');
 wp_enqueue_script('quill-js', 'https://cdn.quilljs.com/1.3.6/quill.min.js', array(), null, true);
 
-wp_enqueue_script('forum', get_template_directory_uri() . '/src/js/forum.js', null, '2025.07.16', true);
+    $forum_js_path = get_template_directory() . '/src/js/forum.js';
+    $forum_js_version = file_exists($forum_js_path) ? filemtime($forum_js_path) : '2026.04.09';
+    wp_enqueue_script('forum', get_template_directory_uri() . '/src/js/forum.js', null, $forum_js_version, true);
 wp_localize_script('forum', 'forumObject', [
-'forum_nonce' => wp_create_nonce('forum_nonce')
+'forum_nonce' => wp_create_nonce('forum_nonce'),
+'str_show_all' => __('Показати всі', 'panterrea_v1'),
+'str_hide' => __('Сховати', 'panterrea_v1'),
+'str_show_all_comments' => __('Показати всі', 'panterrea_v1'),
+'str_hide_comments' => __('Сховати', 'panterrea_v1'),
 ]);
 }
 });
@@ -792,6 +1039,8 @@ send_confirmation_email($user_id);
 add_notification($user_id, 'user_registered', __('Вітаємо! Ви успішно зареєструвались на платформі PanTerrea.',
 'panterrea_v1'));
 
+panterrea_esputnik_sync_after_registration((int) $user_id, $formData);
+
 wp_send_json_success(['message' => 'User successfully registered!']);
 } catch (Exception $e) {
 error_log('User registration error: ' . $e->getMessage());
@@ -905,6 +1154,104 @@ $headers = [
     }
 
     add_action('init', 'confirm_email');
+
+    /**
+     * Admin: ручне керування статусом верифікації email.
+     */
+    function panterrea_render_email_verified_field($user)
+    {
+        if (!current_user_can('edit_users')) {
+            return;
+        }
+
+        $verified = (bool) get_user_meta($user->ID, 'email_verified', true);
+        wp_nonce_field('panterrea_toggle_email_verified', 'panterrea_email_verified_nonce');
+        ?>
+        <h2><?php esc_html_e('Верифікація email', 'panterrea_v1'); ?></h2>
+        <table class="form-table" role="presentation">
+            <tr>
+                <th scope="row">
+                    <label for="panterrea_email_verified"><?php esc_html_e('Email підтверджено', 'panterrea_v1'); ?></label>
+                </th>
+                <td>
+                    <label>
+                        <input type="checkbox"
+                               name="panterrea_email_verified"
+                               id="panterrea_email_verified"
+                               value="1"
+                            <?php checked($verified, true); ?> />
+                        <?php esc_html_e('Позначити email цього користувача як верифікований', 'panterrea_v1'); ?>
+                    </label>
+                    <p class="description">
+                        <?php esc_html_e('Увімкніть, щоб вручну підтвердити email користувача без переходу за посиланням із листа. Вимкніть, щоб скинути верифікацію.', 'panterrea_v1'); ?>
+                    </p>
+                </td>
+            </tr>
+        </table>
+        <?php
+    }
+    add_action('show_user_profile', 'panterrea_render_email_verified_field');
+    add_action('edit_user_profile', 'panterrea_render_email_verified_field');
+
+    function panterrea_save_email_verified_field($user_id)
+    {
+        if (!current_user_can('edit_user', $user_id)) {
+            return;
+        }
+
+        $nonce = isset($_POST['panterrea_email_verified_nonce'])
+            ? sanitize_text_field(wp_unslash($_POST['panterrea_email_verified_nonce']))
+            : '';
+
+        if (!$nonce || !wp_verify_nonce($nonce, 'panterrea_toggle_email_verified')) {
+            return;
+        }
+
+        $new_state = !empty($_POST['panterrea_email_verified']);
+        $old_state = (bool) get_user_meta($user_id, 'email_verified', true);
+
+        if ($new_state === $old_state) {
+            return;
+        }
+
+        if ($new_state) {
+            update_user_meta($user_id, 'email_verified', true);
+            delete_user_meta($user_id, 'email_confirmation_token');
+
+            if (function_exists('add_notification')) {
+                add_notification(
+                    $user_id,
+                    'email_verified',
+                    __('Email успішно підтверджено.', 'panterrea_v1')
+                );
+            }
+        } else {
+            delete_user_meta($user_id, 'email_verified');
+        }
+    }
+    add_action('personal_options_update', 'panterrea_save_email_verified_field');
+    add_action('edit_user_profile_update', 'panterrea_save_email_verified_field');
+
+    function panterrea_users_columns_email_verified($columns)
+    {
+        $columns['email_verified'] = __('Email підтверджено', 'panterrea_v1');
+        return $columns;
+    }
+    add_filter('manage_users_columns', 'panterrea_users_columns_email_verified');
+
+    function panterrea_users_custom_column_email_verified($output, $column_name, $user_id)
+    {
+        if ($column_name !== 'email_verified') {
+            return $output;
+        }
+
+        $verified = (bool) get_user_meta($user_id, 'email_verified', true);
+
+        return $verified
+            ? '<span style="color:#2a9d8f;font-weight:600;">&#10003; ' . esc_html__('Так', 'panterrea_v1') . '</span>'
+            : '<span style="color:#b00020;">&#10007; ' . esc_html__('Ні', 'panterrea_v1') . '</span>';
+    }
+    add_filter('manage_users_custom_column', 'panterrea_users_custom_column_email_verified', 10, 3);
 
     /**
     * @throws Exception
@@ -1786,19 +2133,18 @@ $headers = [
             */
             function get_catalog_max_price($category_slug = 'all')
             {
+            // Use the UAH-equivalent meta so USD ads are taken into account
+            // (slider is presented in грн). See inc/currency.php.
             $args = [
             'post_type' => 'catalog_post',
             'posts_per_page' => 1,
             'post_status' => 'publish',
             'meta_query' => [
             ['key' => '_is_active', 'value' => '1', 'compare' => '='],
-            ['key' => 'catalog_post_currency', 'value' => 'грн', 'compare' => '='],
-            ['key' => 'catalog_post_price', 'compare' => 'EXISTS'],
-            ['key' => 'catalog_post_price', 'value' => '', 'compare' => '!='],
-            ['key' => 'catalog_post_price', 'value' => 0, 'compare' => '>', 'type' => 'NUMERIC'],
+            ['key' => 'catalog_post_price_uah', 'value' => 0, 'compare' => '>', 'type' => 'NUMERIC'],
             ],
             'orderby' => 'meta_value_num',
-            'meta_key' => 'catalog_post_price',
+            'meta_key' => 'catalog_post_price_uah',
             'order' => 'DESC',
             'fields' => 'ids',
             ];
@@ -1812,7 +2158,7 @@ $headers = [
             if (!$post_id) {
             return 1000000;
             }
-            $price = (int) get_post_meta($post_id, 'catalog_post_price', true);
+            $price = (int) get_post_meta($post_id, 'catalog_post_price_uah', true);
             return $price > 0 ? $price : 1000000;
             }
 
@@ -1871,13 +2217,17 @@ $headers = [
             $query_args['posts_per_page'] = 9;
 
             if ($clicked_category !== "all") {
+            $cat_slugs = array_values(array_filter(array_map('sanitize_key', explode(',', $clicked_category))));
+            if (!empty($cat_slugs)) {
             $query_args['tax_query'] = [
             [
             'taxonomy' => 'catalog_category',
             'field' => 'slug',
-            'terms' => $clicked_category,
+            'terms' => $cat_slugs,
+            'operator' => 'IN',
             ],
             ];
+            }
             }
             }
 
@@ -1907,8 +2257,10 @@ $headers = [
             }
 
             if ($price_min > 0 || $price_max < 1000000 || $no_price) {
+            // The slider is displayed in грн, so filter against the UAH-equivalent
+            // so that USD ads are correctly included in the selected range.
             $price_in_range = [
-            'key' => 'catalog_post_price',
+            'key' => 'catalog_post_price_uah',
             'value' => [$price_min, $price_max],
             'type' => 'NUMERIC',
             'compare' => 'BETWEEN',
@@ -1918,9 +2270,9 @@ $headers = [
             'relation' => 'OR',
             [
             'relation' => 'OR',
-            ['key' => 'catalog_post_price', 'compare' => 'NOT EXISTS'],
-            ['key' => 'catalog_post_price', 'value' => '', 'compare' => '='],
-            ['key' => 'catalog_post_price', 'value' => 0, 'compare' => '=', 'type' => 'NUMERIC'],
+            ['key' => 'catalog_post_price_uah', 'compare' => 'NOT EXISTS'],
+            ['key' => 'catalog_post_price_uah', 'value' => '', 'compare' => '='],
+            ['key' => 'catalog_post_price_uah', 'value' => 0, 'compare' => '=', 'type' => 'NUMERIC'],
             ],
             $price_in_range,
             ];
@@ -1931,19 +2283,23 @@ $headers = [
 
             if (!empty($sort)) {
             if (str_contains($sort, 'price')) {
-            $currency = str_contains($sort, 'uah') ? 'грн' : '$';
+            // Sort HRN (грн) and DOL ($) together using the cached UAH-equivalent
+            // stored in `catalog_post_price_uah`. The post's original price and
+            // currency are always shown to the user — the UAH value is internal
+            // sorting metadata only. See inc/currency.php.
             $order = str_contains($sort, 'asc') ? 'ASC' : 'DESC';
 
             $query_args['meta_query'][] = [
-            'key' => 'catalog_post_currency',
-            'value' => $currency,
-            'compare' => '=',
+            'key' => 'catalog_post_price_uah',
+            'value' => 0,
+            'compare' => '>',
+            'type' => 'NUMERIC',
             ];
             $query_args['orderby'] = [
             'meta_value_num' => $order,
             'date' => 'DESC'
             ];
-            $query_args['meta_key'] = 'catalog_post_price';
+            $query_args['meta_key'] = 'catalog_post_price_uah';
             }
             }
 
@@ -2221,7 +2577,7 @@ $headers = [
             FormValidator::rules()['isNumber']]);*/
             $validator->addRules('adCurrency', [FormValidator::rules()['isNotEmpty']]);
             $validator->addRules('adDesc', [FormValidator::rules()['isNotEmpty'],
-            FormValidator::rules()['maxLength'](1000)]);
+            FormValidator::rules()['maxLength'](2000)]);
             $validator->addRules('adCondition', [FormValidator::rules()['isNotEmpty']]);
 
             $validationResult = $validator->validate($formData);
@@ -2232,11 +2588,18 @@ $headers = [
 
             $formData = sanitize_form_data($formData);
 
+            $taxonomy = 'catalog_category';
+            $categoryExists = false;
+            $categoryIdFromRequest = isset($formData['adCategoryId']) ? (int)$formData['adCategoryId'] : 0;
+            if ($categoryIdFromRequest > 0) {
+            $categoryExists = term_exists($categoryIdFromRequest, $taxonomy);
+            }
+            if (!$categoryExists) {
             $rawCategory = $formData['adCategory'];
             $categoryParts = explode(' / ', $rawCategory);
             $lastCategory = trim(end($categoryParts));
-            $taxonomy = 'catalog_category';
             $categoryExists = term_exists($lastCategory, $taxonomy);
+            }
             if (!$categoryExists) {
             wp_send_json_error(['message' => 'Обрана категорія не існує.']);
             }
@@ -2446,7 +2809,7 @@ $headers = [
             FormValidator::rules()['isNumber']]);*/
             $validator->addRules('adCurrency', [FormValidator::rules()['isNotEmpty']]);
             $validator->addRules('adDesc', [FormValidator::rules()['isNotEmpty'],
-            FormValidator::rules()['maxLength'](1000)]);
+            FormValidator::rules()['maxLength'](2000)]);
             $validator->addRules('adCondition', [FormValidator::rules()['isNotEmpty']]);
 
             $validationResult = $validator->validate($formData);
@@ -2457,11 +2820,18 @@ $headers = [
 
             $formData = sanitize_form_data($formData);
 
+            $taxonomy = 'catalog_category';
+            $categoryExists = false;
+            $categoryIdFromRequest = isset($formData['adCategoryId']) ? (int)$formData['adCategoryId'] : 0;
+            if ($categoryIdFromRequest > 0) {
+            $categoryExists = term_exists($categoryIdFromRequest, $taxonomy);
+            }
+            if (!$categoryExists) {
             $rawCategory = $formData['adCategory'];
             $categoryParts = explode(' / ', $rawCategory);
             $lastCategory = trim(end($categoryParts));
-            $taxonomy = 'catalog_category';
             $categoryExists = term_exists($lastCategory, $taxonomy);
+            }
             if (!$categoryExists) {
             wp_send_json_error(['message' => 'Обрана категорія не існує.']);
             }
@@ -4433,6 +4803,18 @@ $headers = [
                     }
 
                     update_post_meta($postId, '_is_forum_post', 1);
+                    update_post_meta($postId, '_forum_like_count', 0);
+
+                    $raw_cat_ids = [];
+                    if (!empty($_POST['post_category_ids']) && is_array($_POST['post_category_ids'])) {
+                        $raw_cat_ids = array_map('intval', $_POST['post_category_ids']);
+                    } elseif (!empty($_POST['post_category_id'])) {
+                        $raw_cat_ids = [(int) $_POST['post_category_id']];
+                    }
+                    $valid_cat_ids = array_filter($raw_cat_ids, fn($id) => $id > 0 && term_exists($id, 'category'));
+                    if (!empty($valid_cat_ids)) {
+                        wp_set_post_terms($postId, array_values($valid_cat_ids), 'category');
+                    }
 
                     wp_send_json_success(['message' => 'Пост успішно створено.', 'postId' => $postId]);
                     }
@@ -4466,6 +4848,13 @@ $headers = [
 
                     $paged = isset($_POST['page']) ? intval($_POST['page']) : 1;
 
+                    $sort = 'all';
+                    if (!empty($_POST['forum_sort'])) {
+                    $sort = panterrea_forum_sanitize_sort(sanitize_key(wp_unslash($_POST['forum_sort'])));
+                    } elseif (isset($_POST['only_my']) && $_POST['only_my'] == '1' && is_user_logged_in()) {
+                    $sort = 'mine';
+                    }
+
                     $args = [
                     'post_type' => 'post',
                     'posts_per_page' => 10,
@@ -4481,11 +4870,26 @@ $headers = [
                     ],
                     ];
 
-                    if (isset($_POST['only_my']) && $_POST['only_my'] == '1' && is_user_logged_in()) {
+                    if ($sort === 'mine' && is_user_logged_in()) {
                     $args['author'] = get_current_user_id();
                     }
 
+                    $forum_cat_ids = panterrea_forum_cat_ids_from_post_param();
+                    $tax_q = panterrea_forum_tax_query_for_categories($forum_cat_ids);
+                    if ($tax_q !== []) {
+                    $args['tax_query'] = $tax_q;
+                    }
+
+                    if ($sort === 'popular') {
+                    $GLOBALS['panterrea_forum_popular_order'] = true;
+                    }
+
                     $query = new WP_Query($args);
+
+                    unset($GLOBALS['panterrea_forum_popular_order']);
+
+                    $has_more = $paged < $query->max_num_pages;
+                    header('X-Forum-Has-More: ' . ($has_more ? '1' : '0'));
 
                     if ($query->have_posts()) :
                     while ($query->have_posts()) : $query->the_post();
@@ -4709,6 +5113,17 @@ $headers = [
                     update_field('field_682a380147e78', [], $postId);
                     }
 
+                    $raw_cat_ids_edit = [];
+                    if (!empty($_POST['post_category_ids']) && is_array($_POST['post_category_ids'])) {
+                        $raw_cat_ids_edit = array_map('intval', $_POST['post_category_ids']);
+                    } elseif (!empty($_POST['post_category_id'])) {
+                        $raw_cat_ids_edit = [(int) $_POST['post_category_id']];
+                    }
+                    $valid_cat_ids_edit = array_filter($raw_cat_ids_edit, fn($id) => $id > 0 && term_exists($id, 'category'));
+                    if (!empty($valid_cat_ids_edit)) {
+                        wp_set_post_terms($postId, array_values($valid_cat_ids_edit), 'category');
+                    }
+
                     wp_send_json_success(['message' => 'Пост успішно оновлено.', 'postId' => $postId]);
                     }
 
@@ -4757,7 +5172,11 @@ $headers = [
                     $comment = get_comment($comment_id);
 
                     ob_start();
-                    get_template_part('template-parts/comment-item', null, ['comment' => $comment]);
+                    get_template_part('template-parts/comment-item', null, [
+                    'comment' => $comment,
+                    'current_user_id' => get_current_user_id(),
+                    'extra_class' => '',
+                    ]);
                     $comment_html = ob_get_clean();
 
                     wp_send_json_success([
@@ -4847,6 +5266,7 @@ $headers = [
                     }
 
                     add_action('wp_ajax_search_forum_posts', 'search_forum_posts_callback');
+                    add_action('wp_ajax_nopriv_search_forum_posts', 'search_forum_posts_callback');
 
                     function search_forum_posts_callback() {
                     $security = sanitize_text_field($_POST['security']);
@@ -4855,9 +5275,14 @@ $headers = [
                     }
 
                     $query = isset($_POST['query']) ? sanitize_text_field($_POST['query']) : '';
-                    $only_my = isset($_POST['only_my']) && $_POST['only_my'] == '1';
-
                     $current_user_id = get_current_user_id();
+
+                    $sort = 'all';
+                    if (!empty($_POST['forum_sort'])) {
+                    $sort = panterrea_forum_sanitize_sort(sanitize_key(wp_unslash($_POST['forum_sort'])));
+                    } elseif (isset($_POST['only_my']) && $_POST['only_my'] == '1' && $current_user_id) {
+                    $sort = 'mine';
+                    }
 
                     // Normalize and stem the query for Ukrainian language support
                     $query_normalized = normalize_ukrainian_keyboard($query);
@@ -4875,8 +5300,14 @@ $headers = [
                     ],
                     ];
 
-                    if ($only_my && $current_user_id) {
+                    if ($sort === 'mine' && $current_user_id) {
                     $args['author'] = $current_user_id;
+                    }
+
+                    $forum_cat_ids = panterrea_forum_cat_ids_from_post_param();
+                    $tax_q = panterrea_forum_tax_query_for_categories($forum_cat_ids);
+                    if ($tax_q !== []) {
+                    $args['tax_query'] = $tax_q;
                     }
 
                     $posts = new WP_Query($args);
@@ -4884,9 +5315,9 @@ $headers = [
                     ob_start();
 
                     if ($posts->have_posts()) {
-                    $found_any = false;
                     $query_lower = mb_strtolower($query_normalized, 'UTF-8');
                     $stem_lower = mb_strtolower($query_stem, 'UTF-8');
+                    $matching_ids = [];
 
                     while ($posts->have_posts()) {
                     $posts->the_post();
@@ -4896,30 +5327,55 @@ $headers = [
                     $post_content = mb_strtolower(get_the_content(), 'UTF-8');
                     $post_title = mb_strtolower(get_the_title(), 'UTF-8');
 
-                    // Check for exact match, partial match, or stem match
                     $matches = false;
-                    
-                    // Exact or partial match in content, title, or author
-                    if (mb_stripos($post_content, $query_lower) !== false || 
+
+                    if (mb_stripos($post_content, $query_lower) !== false ||
                         mb_stripos($post_title, $query_lower) !== false ||
                         mb_stripos($post_author_name, $query_lower) !== false) {
-                        $matches = true;
+                    $matches = true;
                     }
-                    
-                    // Stem match for grammatical forms
+
                     if (!$matches && mb_strlen($stem_lower, 'UTF-8') >= 3) {
-                        if (mb_stripos($post_content, $stem_lower) !== false || 
-                            mb_stripos($post_title, $stem_lower) !== false) {
-                            $matches = true;
-                        }
+                    if (mb_stripos($post_content, $stem_lower) !== false ||
+                        mb_stripos($post_title, $stem_lower) !== false) {
+                    $matches = true;
+                    }
                     }
 
                     if ($matches) {
-                    get_template_part('template-parts/forum-item');
-                    $found_any = true;
+                    $matching_ids[] = get_the_ID();
                     }
                     }
 
+                    wp_reset_postdata();
+
+                    if ($sort === 'popular' && $matching_ids !== []) {
+                    usort($matching_ids, static function ($a, $b) {
+                    $la = panterrea_forum_get_like_count($a);
+                    $lb = panterrea_forum_get_like_count($b);
+                    if ($la !== $lb) {
+                    return $lb <=> $la;
+                    }
+                    $ca = (int) get_comments_number($a);
+                    $cb = (int) get_comments_number($b);
+                    if ($ca !== $cb) {
+                    return $cb <=> $ca;
+                    }
+
+                    return strtotime((string) get_post_field('post_date', $b)) <=> strtotime((string) get_post_field('post_date', $a));
+                    });
+                    }
+
+                    $found_any = false;
+                    foreach ($matching_ids as $pid) {
+                    $post_obj = get_post($pid);
+                    if (!$post_obj) {
+                    continue;
+                    }
+                    setup_postdata($post_obj);
+                    get_template_part('template-parts/forum-item');
+                    $found_any = true;
+                    }
                     wp_reset_postdata();
 
                     if (!$found_any) {
@@ -4961,6 +5417,7 @@ $headers = [
                     }
 
                     update_post_meta($post_id, '_forum_likes', array_values($likes));
+                    panterrea_forum_sync_like_count($post_id);
 
                     wp_send_json_success([
                     'liked' => $liked,
@@ -5240,3 +5697,13 @@ $headers = [
                         }
                         return $term_link;
                         }
+
+add_action('init', function () {
+    $term = get_term(1, 'category');
+    if ($term && ! is_wp_error($term) && $term->name !== 'Інше') {
+        wp_update_term(1, 'category', [
+            'name' => 'Інше',
+            'slug' => 'inhe',
+        ]);
+    }
+});

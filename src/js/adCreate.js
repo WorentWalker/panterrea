@@ -10,6 +10,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
     let selectedCategory = null;
     let selectedSubcategory = null;
+    const initialCategoryId = categoryInput.dataset.categoryId || '';
+    const initialSubcategoryId = categoryInput.dataset.subcategoryId || '';
 
     const selectedCategoryElement = document.querySelector('.popUp__category.active');
     const selectedSubcategoryElement = document.querySelector('.popUp__subcategory.active');
@@ -121,6 +123,8 @@ document.addEventListener("DOMContentLoaded", () => {
         categoryInput.value = subcategoryName
             ? `${categoryName} / ${subcategoryName}`
             : categoryName;
+        categoryInput.dataset.categoryId = selectedCategory?.id || '';
+        categoryInput.dataset.subcategoryId = selectedSubcategory?.id || '';
         categoryInput.dispatchEvent(new Event('input'));
 
         if (popup) {
@@ -158,6 +162,8 @@ document.addEventListener("DOMContentLoaded", () => {
         } else {
             categoryInput.value = '';
         }
+        categoryInput.dataset.categoryId = initialCategoryId;
+        categoryInput.dataset.subcategoryId = initialSubcategoryId;
         categoryInput.dispatchEvent(new Event('input'));
 
         if (popup) {

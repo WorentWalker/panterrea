@@ -1,4 +1,253 @@
 document.addEventListener("DOMContentLoaded", function () {
+  /* ── Composer helpers ── */
+  const composerWrap = document.getElementById("forumComposer");
+
+  function focusComposer() {
+    composerWrap?.classList.add("is-open");
+    if (quill) {
+      quill.focus();
+    }
+  }
+
+  /* ── Login popup ── */
+  const loginPopup = document.getElementById("forumLoginPopup");
+
+  function openLoginPopup() {
+    if (!loginPopup) return;
+    loginPopup.hidden = false;
+    document.body.style.overflow = "hidden";
+    loginPopup.querySelector("input")?.focus();
+  }
+
+  function closeLoginPopup() {
+    if (!loginPopup) return;
+    loginPopup.hidden = true;
+    document.body.style.overflow = "";
+  }
+
+  document.querySelectorAll(".js-forumLoginPopupClose").forEach((el) => {
+    el.addEventListener("click", closeLoginPopup);
+  });
+
+  document.addEventListener("click", (e) => {
+    if (e.target.closest(".js-forumOpenLoginPopup")) {
+      e.preventDefault();
+      openLoginPopup();
+    }
+  });
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && loginPopup && !loginPopup.hidden) {
+      closeLoginPopup();
+    }
+  });
+
+  /* ── Multi-select category chips ── */
+  function syncCatHiddenInputs() {
+    const container = document.getElementById("composerCatInputs");
+    if (!container) return;
+    container.innerHTML = "";
+    document.querySelectorAll(".js-forumCatChip.is-active").forEach((chip) => {
+      const inp = document.createElement("input");
+      inp.type = "hidden";
+      inp.name = "post_category_ids[]";
+      inp.value = chip.dataset.catId || "";
+      container.appendChild(inp);
+    });
+  }
+
+  function getSelectedCatIds() {
+    return Array.from(
+      document.querySelectorAll(".js-forumCatChip.is-active"),
+    ).map((c) => c.dataset.catId);
+  }
+
+  const closeIconSVG = `<span class="forum__composer__catChip__x" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 17 17" fill="none"><path fill-rule="evenodd" clip-rule="evenodd" d="M16.6667 8.33333C16.6667 12.9358 12.9358 16.6667 8.33333 16.6667C3.73083 16.6667 0 12.9358 0 8.33333C0 3.73083 3.73083 0 8.33333 0C12.9358 0 16.6667 3.73083 16.6667 8.33333ZM5.80833 5.80833C5.92552 5.69129 6.08437 5.62555 6.25 5.62555C6.41563 5.62555 6.57448 5.69129 6.69167 5.80833L8.33333 7.45L9.975 5.80833C10.0935 5.69793 10.2502 5.63783 10.4121 5.64069C10.574 5.64354 10.7285 5.70914 10.843 5.82365C10.9575 5.93816 11.0231 6.09265 11.026 6.25456C11.0288 6.41648 10.9687 6.57319 10.8583 6.69167L9.21667 8.33333L10.8583 9.975C10.9687 10.0935 11.0288 10.2502 11.026 10.4121C11.0231 10.574 10.9575 10.7285 10.843 10.843C10.7285 10.9575 10.574 11.0231 10.4121 11.026C10.2502 11.0288 10.0935 10.9687 9.975 10.8583L8.33333 9.21667L6.69167 10.8583C6.57319 10.9687 6.41648 11.0288 6.25456 11.026C6.09265 11.0231 5.93816 10.9575 5.82365 10.843C5.70914 10.7285 5.64354 10.574 5.64069 10.4121C5.63783 10.2502 5.69793 10.0935 5.80833 9.975L7.45 8.33333L5.80833 6.69167C5.69129 6.57448 5.62555 6.41563 5.62555 6.25C5.62555 6.08437 5.69129 5.92552 5.80833 5.80833Z" fill="#116262"/></svg></span>`;
+
+  function updateChipIcon(chip) {
+    const existing = chip.querySelector(".forum__composer__catChip__x");
+    if (chip.classList.contains("is-active")) {
+      if (!existing) chip.insertAdjacentHTML("beforeend", closeIconSVG);
+    } else {
+      if (existing) existing.remove();
+    }
+  }
+
+  document.querySelectorAll(".js-forumCatChip").forEach((chip) => {
+    chip.addEventListener("click", function () {
+      chip.classList.toggle("is-active");
+      chip.setAttribute(
+        "aria-pressed",
+        chip.classList.contains("is-active") ? "true" : "false",
+      );
+      updateChipIcon(chip);
+      syncCatHiddenInputs();
+    });
+  });
+
+  /* ── Guest draft — localStorage (text/cats) + IndexedDB (files) ── */
+  const DRAFT_KEY = "panterrea_forum_draft";
+  const COMMENT_DRAFT_PREFIX = "panterrea_comment_draft_";
+  const IDB_NAME = "panterrea_forum_drafts";
+  const IDB_STORE = "files";
+  const IDB_FILES_KEY = "guest_post_files";
+
+  function idbOpen() {
+    return new Promise((resolve, reject) => {
+      if (!("indexedDB" in window)) {
+        reject(new Error("IndexedDB not supported"));
+        return;
+      }
+      const req = indexedDB.open(IDB_NAME, 1);
+      req.onupgradeneeded = () => {
+        const db = req.result;
+        if (!db.objectStoreNames.contains(IDB_STORE)) {
+          db.createObjectStore(IDB_STORE, { keyPath: "id" });
+        }
+      };
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+  }
+
+  async function idbPutFiles(files) {
+    try {
+      const db = await idbOpen();
+      return await new Promise((resolve) => {
+        const tx = db.transaction(IDB_STORE, "readwrite");
+        tx.objectStore(IDB_STORE).put({ id: IDB_FILES_KEY, files });
+        tx.oncomplete = () => resolve(true);
+        tx.onerror = () => resolve(false);
+        tx.onabort = () => resolve(false);
+      });
+    } catch (_) {
+      return false;
+    }
+  }
+
+  async function idbGetFiles() {
+    try {
+      const db = await idbOpen();
+      return await new Promise((resolve) => {
+        const tx = db.transaction(IDB_STORE, "readonly");
+        const req = tx.objectStore(IDB_STORE).get(IDB_FILES_KEY);
+        req.onsuccess = () => resolve(req.result ? req.result.files : null);
+        req.onerror = () => resolve(null);
+      });
+    } catch (_) {
+      return null;
+    }
+  }
+
+  async function idbClearFiles() {
+    try {
+      const db = await idbOpen();
+      return await new Promise((resolve) => {
+        const tx = db.transaction(IDB_STORE, "readwrite");
+        tx.objectStore(IDB_STORE).delete(IDB_FILES_KEY);
+        tx.oncomplete = () => resolve(true);
+        tx.onerror = () => resolve(false);
+      });
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function saveDraftText(content, cats) {
+    try {
+      localStorage.setItem(DRAFT_KEY, JSON.stringify({ content, cats }));
+    } catch (_) {}
+  }
+
+  async function saveDraft(content, cats, files) {
+    saveDraftText(content, cats);
+    const filesPayload = Array.isArray(files)
+      ? files
+          .filter((f) => f && f.file instanceof Blob)
+          .map((f) => ({
+            file: f.file,
+            name: f.name || (f.file && f.file.name) || "file",
+            type: f.type || (f.file && f.file.type) || "",
+          }))
+      : [];
+    if (filesPayload.length) {
+      await idbPutFiles(filesPayload);
+    } else {
+      await idbClearFiles();
+    }
+  }
+
+  function loadDraft() {
+    try {
+      const raw = localStorage.getItem(DRAFT_KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function clearDraft() {
+    try {
+      localStorage.removeItem(DRAFT_KEY);
+    } catch (_) {}
+    idbClearFiles();
+  }
+
+  /* ── Comment drafts (per post) ── */
+  function saveCommentDraft(postId, text) {
+    try {
+      localStorage.setItem(COMMENT_DRAFT_PREFIX + postId, text);
+    } catch (_) {}
+  }
+
+  function loadCommentDraft(postId) {
+    try {
+      return localStorage.getItem(COMMENT_DRAFT_PREFIX + postId) || null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function clearCommentDraft(postId) {
+    try {
+      localStorage.removeItem(COMMENT_DRAFT_PREFIX + postId);
+    } catch (_) {}
+  }
+
+  async function restoreDraft(draft) {
+    if (!draft) return;
+    if (quill && draft.content) {
+      quill.clipboard.dangerouslyPasteHTML(draft.content);
+    }
+    if (Array.isArray(draft.cats)) {
+      document.querySelectorAll(".js-forumCatChip").forEach((chip) => {
+        if (draft.cats.includes(chip.dataset.catId)) {
+          chip.classList.add("is-active");
+          chip.setAttribute("aria-pressed", "true");
+          updateChipIcon(chip);
+        }
+      });
+      syncCatHiddenInputs();
+    }
+    const storedFiles = await idbGetFiles();
+    if (Array.isArray(storedFiles) && storedFiles.length) {
+      filesArray = [];
+      storedFiles.forEach((f) => {
+        if (!f || !f.file) return;
+        const blob = f.file;
+        const name = f.name || blob.name || "file";
+        const type = f.type || blob.type || "";
+        const file =
+          blob instanceof File ? blob : new File([blob], name, { type });
+        const preview = URL.createObjectURL(file);
+        filesArray.push({ file, preview, name, type });
+      });
+      renderPreview();
+    }
+    clearDraft();
+  }
+
+  /* ── Quill init ── */
   const quillContainer = document.querySelector("#quillEditor");
   let quill;
 
@@ -30,7 +279,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
   const form = document.querySelector("#formForum");
   const formListPost = document.querySelector("#infiniteScrollForum");
-  if (!form && !formListPost) return;
+  if (!formListPost) return;
 
   const uploadButton = document.querySelector(".btn__forumUpload");
   const fileInput = document.getElementById("mediaUploadInput");
@@ -39,67 +288,75 @@ document.addEventListener("DOMContentLoaded", function () {
   const maxFiles = 10;
   let filesArray = [];
 
-  uploadButton.addEventListener("click", () => {
-    fileInput.click();
-  });
-
-  fileInput.addEventListener("change", (event) => {
-    const selectedFiles = Array.from(event.target.files);
-
-    selectedFiles.forEach((file) => {
-      if (filesArray.length >= maxFiles) return;
-
-      const isImage = file.type.startsWith("image/");
-      const isVideo = file.type.startsWith("video/");
-
-      const imageMaxSize = 5 * 1024 * 1024;
-      const videoMaxSize = 120 * 1024 * 1024;
-
-      if (isImage && file.size > imageMaxSize) {
-        MessageSystem.showMessage(
-          "warning",
-          getTranslatedText("file_size_limit")
-        );
-        /*MessageSystem.showMessage('warning', getTranslation('file_size_limit'));*/
-        return;
-      }
-
-      if (isVideo && file.size > videoMaxSize) {
-        MessageSystem.showMessage(
-          "warning",
-          getTranslatedText("video_size_limit")
-        );
-        /*MessageSystem.showMessage('warning', getTranslation('video_size_limit'));*/
-        return;
-      }
-
-      const supported = ["image/jpeg", "image/png", "image/webp", "video/mp4"];
-      if (!supported.includes(file.type)) {
-        MessageSystem.showMessage(
-          "warning",
-          getTranslatedText("unsupported_file_format")
-        );
-        /*MessageSystem.showMessage('warning', getTranslation('unsupported_file_format'));*/
-        return;
-      }
-
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        filesArray.push({
-          file,
-          preview: e.target.result,
-          name: file.name,
-          type: file.type,
-        });
-        renderPreview();
-      };
-      reader.readAsDataURL(file);
+  if (uploadButton && fileInput) {
+    uploadButton.addEventListener("click", () => {
+      fileInput.click();
     });
 
-    event.target.value = "";
-  });
+    fileInput.addEventListener("change", (event) => {
+      const selectedFiles = Array.from(event.target.files);
+
+      selectedFiles.forEach((file) => {
+        if (filesArray.length >= maxFiles) return;
+
+        const isImage = file.type.startsWith("image/");
+        const isVideo = file.type.startsWith("video/");
+
+        const imageMaxSize = 5 * 1024 * 1024;
+        const videoMaxSize = 120 * 1024 * 1024;
+
+        if (isImage && file.size > imageMaxSize) {
+          MessageSystem.showMessage(
+            "warning",
+            getTranslatedText("file_size_limit"),
+          );
+          /*MessageSystem.showMessage('warning', getTranslation('file_size_limit'));*/
+          return;
+        }
+
+        if (isVideo && file.size > videoMaxSize) {
+          MessageSystem.showMessage(
+            "warning",
+            getTranslatedText("video_size_limit"),
+          );
+          /*MessageSystem.showMessage('warning', getTranslation('video_size_limit'));*/
+          return;
+        }
+
+        const supported = [
+          "image/jpeg",
+          "image/png",
+          "image/webp",
+          "video/mp4",
+        ];
+        if (!supported.includes(file.type)) {
+          MessageSystem.showMessage(
+            "warning",
+            getTranslatedText("unsupported_file_format"),
+          );
+          /*MessageSystem.showMessage('warning', getTranslation('unsupported_file_format'));*/
+          return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          filesArray.push({
+            file,
+            preview: e.target.result,
+            name: file.name,
+            type: file.type,
+          });
+          renderPreview();
+        };
+        reader.readAsDataURL(file);
+      });
+
+      event.target.value = "";
+    });
+  }
 
   function renderPreview() {
+    if (!previewContainer) return;
     previewContainer.innerHTML = "";
 
     filesArray.forEach((item, index) => {
@@ -135,111 +392,366 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   }
 
-  form.addEventListener("submit", (event) => {
-    event.preventDefault();
+  if (form) {
+    form.addEventListener("submit", (event) => {
+      event.preventDefault();
 
-    const quillHtml = document.querySelector(".ql-editor")?.innerHTML || "";
-    const textContent =
-      document.querySelector(".ql-editor")?.innerText.trim() || "";
+      const quillHtml = document.querySelector(".ql-editor")?.innerHTML || "";
+      const textContent =
+        document.querySelector(".ql-editor")?.innerText.trim() || "";
 
-    const textareaWrapper = document.querySelector(".input__formTextarea");
-    const errorElement = textareaWrapper.querySelector(".error.caption");
+      const textareaWrapper = document.querySelector(".input__formTextarea");
+      const errorElement = textareaWrapper.querySelector(".error.caption");
 
-    textareaWrapper.classList.remove("notValid");
-    errorElement.textContent = "";
+      textareaWrapper.classList.remove("notValid");
+      errorElement.textContent = "";
 
-    if (!textContent) {
-      textareaWrapper.classList.add("notValid");
-      errorElement.textContent = "Обов'язкове поле.";
-      /*errorElement.textContent = getTranslation('validation.required');*/
-      return;
-    }
+      if (!textContent) {
+        textareaWrapper.classList.add("notValid");
+        errorElement.textContent = "Обов'язкове поле.";
+        return;
+      }
 
-    document.getElementById("postContent").value = quillHtml;
+      /* ── Guest: save draft & open login popup ── */
+      const isLoggedIn = form.dataset.loggedIn === "1";
+      if (!isLoggedIn) {
+        /* Persist text/cats immediately (sync) so they survive even if the
+           async IDB write is interrupted by navigation. */
+        saveDraftText(quillHtml, getSelectedCatIds());
+        saveDraft(quillHtml, getSelectedCatIds(), filesArray).finally(() => {
+          openLoginPopup();
+        });
+        return;
+      }
 
-    const formData = new FormData(form);
-    formData.append("security", forumObject.forum_nonce);
+      syncCatHiddenInputs();
+      document.getElementById("postContent").value = quillHtml;
 
-    filesArray.forEach((item, index) => {
-      if (item.file) {
-        formData.append(`files[${index}]`, item.file);
+      const formData = new FormData(form);
+      formData.append("security", forumObject.forum_nonce);
+
+      filesArray.forEach((item, index) => {
+        if (item.file) {
+          formData.append(`files[${index}]`, item.file);
+        } else {
+          formData.append(`existing[${index}]`, item.preview);
+        }
+      });
+
+      toggleLoadingCursor(true);
+
+      if (isEditing) {
+        formData.append("action", "forum_edit_post");
+        formData.append("post_id", editingPostId);
+
+        fetch(mainObject.ajax_url, {
+          method: "POST",
+          body: formData,
+        })
+          .then((res) => res.json())
+          .then((data) => {
+            if (data.success) {
+              setMessageCookies(
+                "success",
+                getTranslatedText("edit_success"),
+                60,
+              );
+              /*setMessageCookies('success', getTranslation('edit_success'), 60);*/
+              location.reload();
+            } else {
+              MessageSystem.showMessage(
+                "error",
+                data.data?.message || getTranslatedText("error_generic"),
+              );
+              /*MessageSystem.showMessage('error', data.data?.message || getTranslation('error_generic'));*/
+            }
+          })
+          .catch(() => {
+            MessageSystem.showMessage(
+              "error",
+              getTranslatedText("server_error"),
+            );
+            /*MessageSystem.showMessage('error', getTranslation('server_error'));*/
+          })
+          .finally(() => {
+            toggleLoadingCursor(false);
+          });
       } else {
-        formData.append(`existing[${index}]`, item.preview);
+        formData.append("action", "forum_submit_post");
+
+        fetch(mainObject.ajax_url, {
+          method: "POST",
+          body: formData,
+        })
+          .then((res) => res.json())
+          .then((data) => {
+            if (data.success) {
+              form.reset();
+              filesArray = [];
+              renderPreview();
+              setMessageCookies(
+                "success",
+                getTranslatedText("post_success"),
+                60,
+              );
+              /*setMessageCookies('success', getTranslation('post_success'), 60);*/
+              location.reload();
+            } else {
+              MessageSystem.showMessage(
+                "error",
+                data.data?.message || getTranslatedText("error_generic"),
+              );
+              /*MessageSystem.showMessage('error', data.data?.message || getTranslation('error_generic'));*/
+            }
+          })
+          .catch(() => {
+            MessageSystem.showMessage(
+              "error",
+              getTranslatedText("server_error"),
+            );
+            /*MessageSystem.showMessage('error', getTranslation('server_error'));*/
+          })
+          .finally(() => {
+            toggleLoadingCursor(false);
+          });
       }
     });
+  }
 
-    toggleLoadingCursor(true);
-
-    if (isEditing) {
-      formData.append("action", "forum_edit_post");
-      formData.append("post_id", editingPostId);
-
-      fetch(mainObject.ajax_url, {
-        method: "POST",
-        body: formData,
-      })
-        .then((res) => res.json())
-        .then((data) => {
-          if (data.success) {
-            setMessageCookies("success", getTranslatedText("edit_success"), 60);
-            /*setMessageCookies('success', getTranslation('edit_success'), 60);*/
-            location.reload();
-          } else {
-            MessageSystem.showMessage(
-              "error",
-              data.data?.message || getTranslatedText("error_generic")
-            );
-            /*MessageSystem.showMessage('error', data.data?.message || getTranslation('error_generic'));*/
-          }
-        })
-        .catch(() => {
-          MessageSystem.showMessage("error", getTranslatedText("server_error"));
-          /*MessageSystem.showMessage('error', getTranslation('server_error'));*/
-        })
-        .finally(() => {
-          toggleLoadingCursor(false);
-        });
-    } else {
-      formData.append("action", "forum_submit_post");
-
-      fetch(mainObject.ajax_url, {
-        method: "POST",
-        body: formData,
-      })
-        .then((res) => res.json())
-        .then((data) => {
-          if (data.success) {
-            form.reset();
-            filesArray = [];
-            renderPreview();
-            setMessageCookies("success", getTranslatedText("post_success"), 60);
-            /*setMessageCookies('success', getTranslation('post_success'), 60);*/
-            location.reload();
-          } else {
-            MessageSystem.showMessage(
-              "error",
-              data.data?.message || getTranslatedText("error_generic")
-            );
-            /*MessageSystem.showMessage('error', data.data?.message || getTranslation('error_generic'));*/
-          }
-        })
-        .catch(() => {
-          MessageSystem.showMessage("error", getTranslatedText("server_error"));
-          /*MessageSystem.showMessage('error', getTranslation('server_error'));*/
-        })
-        .finally(() => {
-          toggleLoadingCursor(false);
-        });
-    }
-  });
-
-  renderPreview();
+  if (previewContainer) {
+    renderPreview();
+  }
 
   let isSearching = false;
   let currentPage = 1;
   let hasMorePosts = true;
-  let showOnlyMine = false;
+  let forumSort = "all";
   let isLoading = false;
+
+  const postsContainerInit = document.querySelector("#infiniteScrollForum");
+  if (postsContainerInit) {
+    if (postsContainerInit.dataset.forumSort) {
+      forumSort = postsContainerInit.dataset.forumSort;
+    } else if (postsContainerInit.dataset.onlyMy === "1") {
+      forumSort = "mine";
+    }
+  }
+
+  function getSelectedForumCategoryIds() {
+    const allBox = document.getElementById("forum-cat-all");
+    if (allBox && allBox.checked) {
+      return [];
+    }
+    return Array.from(
+      document.querySelectorAll(".js-forumCategoryFilter:checked"),
+    ).map((el) => String(el.value));
+  }
+
+  function syncForumCategoryAllState() {
+    const allBox = document.getElementById("forum-cat-all");
+    if (!allBox) return;
+    const anySpec = document.querySelector(
+      ".forum__sidebar .js-forumCategoryFilter:checked",
+    );
+    if (!anySpec) {
+      allBox.checked = true;
+    }
+  }
+
+  function syncForumSortDataAttr() {
+    const el = document.querySelector("#infiniteScrollForum");
+    if (!el) return;
+    el.dataset.forumSort = forumSort;
+    el.dataset.onlyMy = forumSort === "mine" ? "1" : "0";
+  }
+
+  function forumUiStrings() {
+    const o = typeof forumObject !== "undefined" ? forumObject : {};
+    return {
+      showComments:
+        o.str_show_all_comments || getTranslatedText("show_comment"),
+      hideComments: o.str_hide_comments || getTranslatedText("hide_comment"),
+      showAll: o.str_show_all || "Показати всі",
+      hide: o.str_hide || "Сховати",
+    };
+  }
+
+  function initForumCommentClamps(root) {
+    const isEl =
+      root &&
+      (typeof Node !== "undefined"
+        ? root.nodeType === Node.ELEMENT_NODE
+        : root.nodeType === 1);
+    const el = isEl ? root : document;
+    const nodes = el.querySelectorAll(
+      ".forum__itemPost__comment__body.is-forumCommentClampable",
+    );
+
+    nodes.forEach((body) => {
+      body.classList.remove("is-forumCommentExpanded");
+      const block = body.closest(".forum__itemPost__comment__textBlock");
+      const btn = block?.querySelector(".js-forumCommentToggle");
+      if (!btn || !block) return;
+
+      if (body.scrollHeight <= body.clientHeight + 2) {
+        btn.hidden = true;
+      } else {
+        btn.hidden = false;
+        btn.textContent = btn.dataset.show || forumUiStrings().showAll;
+      }
+    });
+  }
+
+  function initForumPostContentClamps(root) {
+    const isEl = root && root.nodeType === 1;
+    const el = isEl ? root : document;
+    el.querySelectorAll(".forum__itemPost__content").forEach((content) => {
+      if (content.dataset.clampInit) return;
+      content.dataset.clampInit = "1";
+
+      content.classList.add("is-clamped");
+
+      if (content.scrollHeight <= content.clientHeight + 2) {
+        content.classList.remove("is-clamped");
+        return;
+      }
+
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "forum__itemPost__readMore";
+      btn.textContent = "Показати більше";
+
+      content.insertAdjacentElement("afterend", btn);
+
+      btn.addEventListener("click", () => {
+        const isCollapsed = content.classList.contains("is-clamped");
+        if (isCollapsed) {
+          content.classList.remove("is-clamped");
+          btn.textContent = "Приховати";
+        } else {
+          content.classList.add("is-clamped");
+          btn.textContent = "Показати більше";
+        }
+      });
+    });
+  }
+
+  function scheduleInitForumUi(root) {
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        initForumCommentClamps(root);
+        initForumPostContentClamps(root);
+      });
+    });
+  }
+
+  function syncForumTopCommentsCountBadge(postEl) {
+    if (!postEl) return;
+    const commentsRoot = postEl.querySelector(".forum__itemPost__comments");
+    const label = postEl.querySelector(".js-forumTopCommentsCount");
+    if (!commentsRoot || !label) return;
+    const n = commentsRoot.querySelectorAll(
+      ":scope > .forum__itemPost__comment",
+    ).length;
+    label.textContent = n > 0 ? String(n) : "";
+  }
+
+  function forumRefreshTopLevelCommentsUi(postEl) {
+    const commentsRoot = postEl.querySelector(".forum__itemPost__comments");
+    const block = postEl.querySelector(".forum__itemPost__commentsBlock");
+    if (!commentsRoot || !block) return;
+    const tops = commentsRoot.querySelectorAll(
+      ":scope > .forum__itemPost__comment",
+    );
+    let btn = block.querySelector(".js-toggleComments");
+    tops.forEach((el, i) => {
+      el.classList.remove("shown-comment");
+      if (i >= 2) {
+        el.classList.add("hidden-comment");
+      } else {
+        el.classList.remove("hidden-comment");
+      }
+    });
+    if (tops.length > 2) {
+      if (!btn) {
+        btn = document.createElement("button");
+        btn.type = "button";
+        btn.className =
+          "btn btn__transparent forum__itemPost__showAllComments js-toggleComments subtitle2";
+        btn.textContent = forumUiStrings().showComments;
+        block.appendChild(btn);
+      }
+    } else if (btn) {
+      btn.remove();
+    }
+    syncForumTopCommentsCountBadge(postEl);
+    scheduleInitForumUi(postEl);
+  }
+
+  function appendForumCats(formData) {
+    getSelectedForumCategoryIds().forEach((id) => {
+      formData.append("forum_cats[]", id);
+    });
+  }
+
+  function syncForumCatsDataAttr() {
+    const el = document.querySelector("#infiniteScrollForum");
+    if (!el) return;
+    el.dataset.forumCats = getSelectedForumCategoryIds().join(",");
+  }
+
+  function runForumSearch(query) {
+    isSearching = true;
+    syncLoadMoreBtn();
+    toggleLoadingCursor(true);
+    const formData = new FormData();
+    formData.append("action", "search_forum_posts");
+    formData.append("security", forumObject.forum_nonce);
+    formData.append("query", query);
+    formData.append("forum_sort", forumSort);
+    formData.append("only_my", forumSort === "mine" ? "1" : "0");
+    appendForumCats(formData);
+
+    fetch(mainObject.ajax_url, {
+      method: "POST",
+      body: formData,
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success) {
+          const container = document.querySelector("#infiniteScrollForum");
+          if (container) container.innerHTML = data.data.html;
+          scheduleInitForumUi(container);
+        } else {
+          MessageSystem.showMessage(
+            "error",
+            getTranslatedText("error_generic"),
+          );
+        }
+      })
+      .catch(() => {
+        MessageSystem.showMessage("error", getTranslatedText("server_error"));
+      })
+      .finally(() => {
+        toggleLoadingCursor(false);
+      });
+  }
+
+  function refreshForumFeed() {
+    const si = document.getElementById("searchInputForum");
+    const query = si ? si.value.trim() : "";
+    syncForumCatsDataAttr();
+    syncForumSortDataAttr();
+    if (query !== "") {
+      runForumSearch(query);
+      return;
+    }
+    isSearching = false;
+    currentPage = 1;
+    hasMorePosts = true;
+    syncLoadMoreBtn();
+    loadForumPosts({ reset: true });
+  }
 
   // If the server pre-rendered page 1 (SEO/no-JS fallback), continue from the next page
   (function initFromServerRenderedState() {
@@ -247,9 +759,14 @@ document.addEventListener("DOMContentLoaded", function () {
     if (!postsContainer) return;
     const serverPage = parseInt(postsContainer.dataset.currentPage || "0", 10);
     const maxPages = parseInt(postsContainer.dataset.maxPages || "0", 10);
+    if (maxPages === 0) {
+      hasMorePosts = false;
+      currentPage = serverPage > 0 ? serverPage + 1 : 1;
+      return;
+    }
     if (serverPage > 0) {
       currentPage = serverPage + 1;
-      if (maxPages > 0 && serverPage >= maxPages) {
+      if (serverPage >= maxPages) {
         hasMorePosts = false;
       }
     }
@@ -265,22 +782,30 @@ document.addEventListener("DOMContentLoaded", function () {
     formData.append("action", "load_forum_posts");
     formData.append("security", forumObject.forum_nonce);
     formData.append("page", currentPage);
-    formData.append("only_my", showOnlyMine ? "1" : "0");
+    formData.append("forum_sort", forumSort);
+    formData.append("only_my", forumSort === "mine" ? "1" : "0");
+    appendForumCats(formData);
 
     fetch(mainObject.ajax_url, {
       method: "POST",
       body: formData,
     })
-      .then((res) => res.text())
+      .then((res) => {
+        const hasMore = res.headers.get("X-Forum-Has-More");
+        if (hasMore !== null) {
+          hasMorePosts = hasMore === "1";
+        }
+        return res.text();
+      })
       .then((html) => {
         if (reset) {
           postsContainer.innerHTML = "";
           currentPage = 1;
-          hasMorePosts = true;
         }
 
         if (!html.trim()) {
           hasMorePosts = false;
+          syncLoadMoreBtn();
           return;
         }
 
@@ -290,165 +815,210 @@ document.addEventListener("DOMContentLoaded", function () {
         tempDiv.innerHTML = html;
         Array.from(tempDiv.children).forEach((post) => {
           postsContainer.appendChild(post);
+          scheduleInitForumUi(post);
         });
+
+        syncLoadMoreBtn();
       })
       .catch((err) => {
         console.error("Помилка завантаження постів:", err);
       })
       .finally(() => {
         isLoading = false;
+        if (loadMoreBtn) {
+          loadMoreBtn.classList.remove("is-loading");
+          loadMoreBtn.disabled = false;
+        }
       });
   }
 
-  function initForumInfiniteScroll() {
-    window.addEventListener("scroll", () => {
-      if (isSearching || isLoading || !hasMorePosts) return;
+  const loadMoreBtn = document.getElementById("forumLoadMoreBtn");
 
-      const postsContainer = document.querySelector("#infiniteScrollForum");
-      if (!postsContainer) return;
+  function syncLoadMoreBtn() {
+    if (!loadMoreBtn) return;
+    if (hasMorePosts && !isSearching) {
+      loadMoreBtn.style.display = "";
+    } else {
+      loadMoreBtn.style.display = "none";
+    }
+  }
 
-      const scrollPosition = window.innerHeight + window.scrollY;
-      const triggerPosition =
-        postsContainer.offsetTop + postsContainer.offsetHeight - 300;
-
-      if (scrollPosition >= triggerPosition) {
-        loadForumPosts();
-      }
-    });
-
-    const postsContainer = document.querySelector("#infiniteScrollForum");
-    if (postsContainer && postsContainer.children.length === 0) {
+  if (loadMoreBtn) {
+    loadMoreBtn.addEventListener("click", () => {
+      if (isLoading || !hasMorePosts) return;
+      loadMoreBtn.classList.add("is-loading");
+      loadMoreBtn.disabled = true;
       loadForumPosts();
-    }
-  }
-
-  initForumInfiniteScroll();
-
-  const toggleBtn = document.querySelector(".js-toggleAll");
-  if (toggleBtn) {
-    toggleBtn.addEventListener("click", () => {
-      showOnlyMine = !showOnlyMine;
-      toggleBtn.innerText = showOnlyMine
-        ? getTranslatedText("show_all")
-        : getTranslatedText("show_my");
-      /*toggleBtn.innerText = showOnlyMine ? getTranslation('show_all') : getTranslation('show_my');*/
-      toggleBtn.dataset.show = showOnlyMine ? "my" : "all";
-
-      const query = searchInput.value.trim();
-
-      if (query !== "") {
-        isSearching = true;
-        toggleLoadingCursor(true);
-
-        const formData = new FormData();
-        formData.append("action", "search_forum_posts");
-        formData.append("security", forumObject.forum_nonce);
-        formData.append("query", query);
-        formData.append("only_my", showOnlyMine ? "1" : "0");
-
-        fetch(mainObject.ajax_url, {
-          method: "POST",
-          body: formData,
-        })
-          .then((res) => res.json())
-          .then((data) => {
-            if (data.success) {
-              const container = document.querySelector("#infiniteScrollForum");
-              container.innerHTML = data.data.html;
-            } else {
-              MessageSystem.showMessage(
-                "error",
-                getTranslatedText("error_generic")
-              );
-              /*MessageSystem.showMessage("error", getTranslation("error_generic"));*/
-            }
-          })
-          .catch(() => {
-            MessageSystem.showMessage(
-              "error",
-              getTranslatedText("server_error")
-            );
-            /*MessageSystem.showMessage("error", getTranslation("server_error"));*/
-          })
-          .finally(() => {
-            toggleLoadingCursor(false);
-          });
-      } else {
-        currentPage = 1;
-        hasMorePosts = true;
-        isSearching = false;
-
-        loadForumPosts({ reset: true });
-      }
     });
   }
 
-  const searchInput = document.getElementById("searchInputForum");
+  const postsContainerCheck = document.querySelector("#infiniteScrollForum");
+  if (postsContainerCheck && postsContainerCheck.children.length === 0) {
+    loadForumPosts();
+  }
 
-  searchInput.addEventListener("keydown", function (e) {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      const query = this.value.trim();
+  syncLoadMoreBtn();
 
-      if (query === "") return;
+  document
+    .querySelectorAll('input[name="forum_feed_sort"]')
+    .forEach((radio) => {
+      radio.addEventListener("change", () => {
+        if (!radio.checked) return;
+        forumSort = radio.value;
+        syncForumSortDataAttr();
+        refreshForumFeed();
+      });
+    });
 
-      isSearching = true;
-      toggleLoadingCursor(true);
-
-      const formData = new FormData();
-      formData.append("action", "search_forum_posts");
-      formData.append("security", forumObject.forum_nonce);
-      formData.append("query", query);
-      formData.append("only_my", showOnlyMine ? "1" : "0");
-
-      fetch(mainObject.ajax_url, {
-        method: "POST",
-        body: formData,
-      })
-        .then((res) => res.json())
-        .then((data) => {
-          if (data.success) {
-            const container = document.querySelector("#infiniteScrollForum");
-            container.innerHTML = data.data.html;
-          } else {
-            MessageSystem.showMessage(
-              "error",
-              getTranslatedText("error_generic")
-            );
-            /*MessageSystem.showMessage("error", getTranslation("error_generic"));*/
-          }
-        })
-        .catch(() => {
-          MessageSystem.showMessage("error", getTranslatedText("server_error"));
-          /*MessageSystem.showMessage("error", getTranslation("server_error"));*/
-        })
-        .finally(() => {
-          toggleLoadingCursor(false);
+  const forumCatAll = document.getElementById("forum-cat-all");
+  if (forumCatAll) {
+    forumCatAll.addEventListener("change", () => {
+      const allFilters = document.querySelectorAll(
+        ".forum__sidebar .js-forumCategoryFilter",
+      );
+      if (forumCatAll.checked) {
+        // Check all individual categories
+        allFilters.forEach((cb) => {
+          cb.checked = true;
         });
-    }
+      } else {
+        // Uncheck all individual categories
+        allFilters.forEach((cb) => {
+          cb.checked = false;
+        });
+      }
+      refreshForumFeed();
+    });
+  }
+
+  document.querySelectorAll(".js-forumCategoryFilter").forEach((cb) => {
+    cb.addEventListener("change", () => {
+      const allBox = document.getElementById("forum-cat-all");
+      if (!allBox) {
+        refreshForumFeed();
+        return;
+      }
+      const allFilters = document.querySelectorAll(
+        ".forum__sidebar .js-forumCategoryFilter",
+      );
+      const allChecked = Array.from(allFilters).every((f) => f.checked);
+      const noneChecked = Array.from(allFilters).every((f) => !f.checked);
+      // "Всі" is checked when all individual boxes are checked or none are checked
+      allBox.checked = allChecked || noneChecked;
+      allBox.indeterminate = !allChecked && !noneChecked;
+      refreshForumFeed();
+    });
   });
 
-  searchInput.addEventListener("input", function () {
-    const query = this.value.trim();
+  document.querySelectorAll(".js-forumCatsToggle").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const extras = btn.previousElementSibling;
+      if (
+        !extras ||
+        !extras.classList.contains("forum__sidebar__categoryExtras")
+      ) {
+        return;
+      }
+      const collapsed = extras.classList.toggle("is-collapsed");
+      const showLab = btn.dataset.labelShow || forumUiStrings().showAll;
+      const hideLab = btn.dataset.labelHide || forumUiStrings().hide;
+      btn.textContent = collapsed ? showLab : hideLab;
+      btn.setAttribute("aria-expanded", collapsed ? "false" : "true");
+    });
+  });
 
-    if (query === "") {
-      isSearching = false;
-      currentPage = 1;
-      hasMorePosts = true;
+  scheduleInitForumUi(document);
 
-      loadForumPosts({ reset: true });
+  document.querySelectorAll(".js-forumScrollToComposer").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const el = document.getElementById("forumComposer");
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+      focusComposer();
+    });
+  });
+
+  /* ── Mobile sidebar toggle ── */
+  const forumSidebar = document.querySelector(".forum__sidebar");
+  const forumFiltersToggle = document.querySelector(".js-forumFiltersToggle");
+  const forumFiltersHide = document.querySelectorAll(".js-forumFiltersHide");
+
+  function openForumSidebar() {
+    if (!forumSidebar) return;
+    forumSidebar.classList.add("is-open");
+    if (forumFiltersToggle) forumFiltersToggle.classList.add("is-active");
+  }
+  function closeForumSidebar() {
+    if (!forumSidebar) return;
+    forumSidebar.classList.remove("is-open");
+    if (forumFiltersToggle) forumFiltersToggle.classList.remove("is-active");
+  }
+
+  if (forumFiltersToggle) {
+    forumFiltersToggle.addEventListener("click", () => {
+      forumSidebar.classList.contains("is-open")
+        ? closeForumSidebar()
+        : openForumSidebar();
+    });
+  }
+  forumFiltersHide.forEach((btn) =>
+    btn.addEventListener("click", closeForumSidebar),
+  );
+
+  /* ── Search (mobile bar + sidebar share the same logic) ── */
+  function getActiveForumSearch() {
+    const all = document.querySelectorAll(".js-forumSearchInput");
+    for (const el of all) {
+      if (el.offsetParent !== null) return el;
     }
+    return document.getElementById("searchInputForum") || all[0] || null;
+  }
+
+  document
+    .querySelectorAll(
+      ".forum__sidebar__searchSubmit, .js-forumMobileSearchSubmit",
+    )
+    .forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const si = getActiveForumSearch();
+        if (!si) return;
+        if (si.value !== "") {
+          si.value = "";
+          si.focus();
+          refreshForumFeed();
+          return;
+        }
+      });
+    });
+
+  document.querySelectorAll(".js-forumSearchInput").forEach((input) => {
+    input.addEventListener("keydown", function (e) {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        const query = this.value.trim();
+        if (query === "") return;
+        runForumSearch(query);
+      }
+    });
+
+    input.addEventListener("input", function () {
+      const query = this.value.trim();
+      if (query === "") {
+        refreshForumFeed();
+      }
+    });
   });
 
   document.addEventListener("click", function (event) {
     const allOptionsLists = document.querySelectorAll(
-      ".forum__itemPost__optionsList"
+      ".forum__itemPost__optionsList",
     );
     const forumOptions = event.target.closest(".js-forumOptions");
 
     if (forumOptions) {
       const optionsList = forumOptions.querySelector(
-        ".forum__itemPost__optionsList"
+        ".forum__itemPost__optionsList",
       );
 
       if (optionsList) {
@@ -471,7 +1041,7 @@ document.addEventListener("DOMContentLoaded", function () {
     .getElementById("infiniteScrollForum")
     ?.addEventListener("click", function (event) {
       const button = event.target.closest(
-        ".js-openPopUp[data-popUp='deleteForumItem']"
+        ".js-openPopUp[data-popUp='deleteForumItem']",
       );
       if (!button) return;
 
@@ -482,7 +1052,7 @@ document.addEventListener("DOMContentLoaded", function () {
     });
 
   const deleteForumItemButton = document.getElementById(
-    "deleteForumItemButton"
+    "deleteForumItemButton",
   );
   if (deleteForumItemButton) {
     deleteForumItemButton.addEventListener("click", function () {
@@ -501,7 +1071,7 @@ document.addEventListener("DOMContentLoaded", function () {
         .then((data) => {
           if (data.success) {
             const postElement = document.querySelector(
-              `.forum__itemPost[data-post-id="${deletePostId}"]`
+              `.forum__itemPost[data-post-id="${deletePostId}"]`,
             );
             if (postElement) postElement.remove();
 
@@ -511,7 +1081,7 @@ document.addEventListener("DOMContentLoaded", function () {
           } else {
             MessageSystem.showMessage(
               "error",
-              getTranslatedText("delete_error")
+              getTranslatedText("delete_error"),
             );
             /*MessageSystem.showMessage("error", getTranslation('delete_error', 'Помилка видалення.'));*/
           }
@@ -529,9 +1099,10 @@ document.addEventListener("DOMContentLoaded", function () {
   const editButtonsWrapper = document.querySelector(".form__editBtn");
   const editSubmitButton = document.querySelector(".js-forumEdit");
   const cancelEditButton = document.querySelector(".js-forumEditCancel");
-  const publishButton = form.querySelector(".js-forumPublish");
+  const publishButton = form ? form.querySelector(".js-forumPublish") : null;
 
   function resetForm() {
+    if (!form) return;
     form.reset();
     if (quill) {
       quill.setContents([]);
@@ -540,14 +1111,43 @@ document.addEventListener("DOMContentLoaded", function () {
     editingPostId = null;
     isEditing = false;
     renderPreview();
-    editButtonsWrapper.classList.add("hidden");
-    publishButton.classList.remove("hidden");
+    if (editButtonsWrapper) editButtonsWrapper.classList.add("hidden");
+    if (publishButton) publishButton.classList.remove("hidden");
+    document.querySelectorAll(".js-forumCatChip").forEach((c) => {
+      c.classList.remove("is-active");
+      c.setAttribute("aria-pressed", "false");
+      updateChipIcon(c);
+    });
+    syncCatHiddenInputs();
   }
 
-  cancelEditButton.addEventListener("click", (e) => {
-    e.preventDefault();
-    resetForm();
-  });
+  /* ── Restore draft on page load (logged-in users) ── */
+  (async function checkAndRestoreDraft() {
+    const isLoggedIn = form && form.dataset.loggedIn === "1";
+    if (!isLoggedIn) return;
+    const draft = loadDraft();
+    const idbFiles = await idbGetFiles();
+    const hasFiles = Array.isArray(idbFiles) && idbFiles.length > 0;
+    if (!draft && !hasFiles) return;
+    const payload = draft || { content: "", cats: [] };
+    // Defer until Quill is ready
+    const tryRestore = (attempts) => {
+      if (quill) {
+        restoreDraft(payload);
+        focusComposer();
+      } else if (attempts > 0) {
+        setTimeout(() => tryRestore(attempts - 1), 200);
+      }
+    };
+    tryRestore(10);
+  })();
+
+  if (cancelEditButton) {
+    cancelEditButton.addEventListener("click", (e) => {
+      e.preventDefault();
+      resetForm();
+    });
+  }
 
   document.addEventListener("click", function (e) {
     const editBtn = e.target.closest(".js-forumEditTrigger");
@@ -589,35 +1189,55 @@ document.addEventListener("DOMContentLoaded", function () {
 
     renderPreview();
 
-    publishButton.classList.add("hidden");
-    editButtonsWrapper.classList.remove("hidden");
-    window.scrollTo({ top: form.offsetTop - 180, behavior: "smooth" });
+    // Restore categories from post
+    document.querySelectorAll(".js-forumCatChip").forEach((c) => {
+      c.classList.remove("is-active");
+      c.setAttribute("aria-pressed", "false");
+      updateChipIcon(c);
+    });
+    const postCats = post.querySelectorAll(".forum__itemPost__cat");
+    postCats.forEach((catEl) => {
+      const catName = catEl.textContent.trim();
+      document.querySelectorAll(".js-forumCatChip").forEach((chip) => {
+        if (chip.dataset.catName === catName) {
+          chip.classList.add("is-active");
+          chip.setAttribute("aria-pressed", "true");
+          updateChipIcon(chip);
+        }
+      });
+    });
+    syncCatHiddenInputs();
+
+    if (publishButton) publishButton.classList.add("hidden");
+    if (editButtonsWrapper) editButtonsWrapper.classList.remove("hidden");
+    focusComposer();
+    if (form) {
+      setTimeout(() => {
+        form.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 50);
+    }
   });
 
-  editSubmitButton.addEventListener("click", () => {
-    form.requestSubmit();
-  });
+  if (editSubmitButton && form) {
+    editSubmitButton.addEventListener("click", () => {
+      form.requestSubmit();
+    });
+  }
 
-  document.addEventListener("submit", function (e) {
-    const commentForm = e.target.closest(".js-forumCommentForm");
-    if (!commentForm) return;
-
-    e.preventDefault();
-
+  /* ── Helper: submit a comment via AJAX ── */
+  function submitComment(commentForm, commentText) {
     const postId = commentForm.dataset.postId;
-    const commentInput = commentForm.querySelector('input[name="comment"]');
-    const commentText = commentInput.value.trim();
-
     const inputWrapper = commentForm.querySelector(".input__form");
-    const errorElement = inputWrapper.querySelector(".error");
+    const errorElement = inputWrapper
+      ? inputWrapper.querySelector(".error")
+      : null;
 
-    inputWrapper.classList.remove("notValid");
-    errorElement.textContent = "";
+    if (inputWrapper) inputWrapper.classList.remove("notValid");
+    if (errorElement) errorElement.textContent = "";
 
     if (!commentText) {
-      inputWrapper.classList.add("notValid");
-      errorElement.textContent = "Обов'язкове поле.";
-      /*errorElement.textContent = getTranslation('validation.required');*/
+      if (inputWrapper) inputWrapper.classList.add("notValid");
+      if (errorElement) errorElement.textContent = "Обов'язкове поле.";
       return;
     }
 
@@ -629,47 +1249,156 @@ document.addEventListener("DOMContentLoaded", function () {
 
     toggleLoadingCursor(true);
 
-    fetch(mainObject.ajax_url, {
-      method: "POST",
-      body: formData,
-    })
+    fetch(mainObject.ajax_url, { method: "POST", body: formData })
       .then((res) => res.json())
       .then((data) => {
         if (data.success && data.data.comment_html) {
           const commentsContainer = commentForm
             .closest(".forum__itemPost")
             .querySelector(".forum__itemPost__comments");
-
           if (commentsContainer) {
             commentsContainer.insertAdjacentHTML(
               "beforeend",
-              data.data.comment_html
+              data.data.comment_html,
+            );
+            forumRefreshTopLevelCommentsUi(
+              commentForm.closest(".forum__itemPost"),
             );
           }
-
           commentForm.reset();
-
+          syncCommentCancelState(commentForm);
+          const grownField = commentForm.querySelector(".js-autoGrow");
+          if (grownField) autoGrowField(grownField);
+          clearCommentDraft(postId);
           MessageSystem.showMessage(
             "success",
-            getTranslatedText("comment_added")
+            getTranslatedText("comment_added"),
           );
-          /*MessageSystem.showMessage('success', getTranslation('comment_added'));*/
         } else {
           MessageSystem.showMessage(
             "error",
-            getTranslatedText("error_generic")
+            getTranslatedText("error_generic"),
           );
-          /*MessageSystem.showMessage('error', getTranslation('error_generic'));*/
         }
       })
       .catch(() => {
         MessageSystem.showMessage("error", getTranslatedText("server_error"));
-        /*MessageSystem.showMessage('error', getTranslation('server_error'));*/
       })
       .finally(() => {
         toggleLoadingCursor(false);
       });
+  }
+
+  document.addEventListener("submit", function (e) {
+    const commentForm = e.target.closest(".js-forumCommentForm");
+    if (!commentForm) return;
+    e.preventDefault();
+
+    const commentInput = commentForm.querySelector('[name="comment"]');
+    const commentText = commentInput ? commentInput.value.trim() : "";
+    const postId = commentForm.dataset.postId;
+    const isLoggedIn = commentForm.dataset.loggedIn === "1";
+
+    /* ── Guest: save comment draft & open login popup ── */
+    if (!isLoggedIn) {
+      if (commentText) saveCommentDraft(postId, commentText);
+      openLoginPopup();
+      return;
+    }
+
+    submitComment(commentForm, commentText);
   });
+
+  /* ── Cancel button ── */
+  document.addEventListener("click", function (e) {
+    const cancelBtn = e.target.closest(".js-forumCommentCancel");
+    if (!cancelBtn) return;
+    if (cancelBtn.disabled) return;
+    const commentForm = cancelBtn.closest(".js-forumCommentForm");
+    if (!commentForm) return;
+    commentForm.reset();
+    const inputWrapper = commentForm.querySelector(".input__form");
+    if (inputWrapper) inputWrapper.classList.remove("notValid");
+    const grownField = commentForm.querySelector(".js-autoGrow");
+    if (grownField) autoGrowField(grownField);
+    syncCommentCancelState(commentForm);
+  });
+
+  /* ── Sync Cancel button state with input value ── */
+  function syncCommentCancelState(commentForm) {
+    const cancelBtn = commentForm.querySelector(".js-forumCommentCancel");
+    if (!cancelBtn) return;
+    const input = commentForm.querySelector('[name="comment"]');
+    const hasValue = !!(input && input.value.trim());
+    cancelBtn.disabled = !hasValue;
+  }
+
+  document.addEventListener("input", function (e) {
+    const input = e.target.closest('.js-forumCommentForm [name="comment"]');
+    if (!input) return;
+    const form = input.closest(".js-forumCommentForm");
+    if (form) syncCommentCancelState(form);
+  });
+
+  document
+    .querySelectorAll(".js-forumCommentForm")
+    .forEach((form) => syncCommentCancelState(form));
+
+  /* ── Auto-grow for comment textarea (min 3 rows, max 8 rows) ── */
+  function autoGrowField(field) {
+    if (!field || field.tagName !== "TEXTAREA") return;
+    const style = window.getComputedStyle(field);
+    const lineHeight = parseFloat(style.lineHeight) || 22;
+    const paddingY =
+      (parseFloat(style.paddingTop) || 0) +
+      (parseFloat(style.paddingBottom) || 0);
+    const borderY =
+      (parseFloat(style.borderTopWidth) || 0) +
+      (parseFloat(style.borderBottomWidth) || 0);
+    const minRows = parseInt(field.dataset.minRows, 10) || 3;
+    const maxRows = parseInt(field.dataset.maxRows, 10) || 8;
+    const minHeight = lineHeight * minRows + paddingY + borderY;
+    const maxHeight = lineHeight * maxRows + paddingY + borderY;
+
+    field.style.height = "auto";
+    const next = Math.min(
+      Math.max(field.scrollHeight + borderY, minHeight),
+      maxHeight,
+    );
+    field.style.height = next + "px";
+    field.style.overflowY = field.scrollHeight + borderY > maxHeight
+      ? "auto"
+      : "hidden";
+  }
+
+  document
+    .querySelectorAll(".js-forumCommentForm .js-autoGrow")
+    .forEach((field) => autoGrowField(field));
+
+  document.addEventListener("input", function (e) {
+    const field = e.target.closest(".js-forumCommentForm .js-autoGrow");
+    if (!field) return;
+    autoGrowField(field);
+  });
+
+  /* ── On page load: restore comment draft if logged in ── */
+  (function restoreCommentDrafts() {
+    document
+      .querySelectorAll(".js-forumCommentForm[data-logged-in='1']")
+      .forEach((form) => {
+        const postId = form.dataset.postId;
+        const draft = loadCommentDraft(postId);
+        if (!draft) return;
+        const input = form.querySelector('[name="comment"]');
+        if (input) {
+          input.value = draft;
+          if (input.classList.contains("js-autoGrow")) autoGrowField(input);
+          clearCommentDraft(postId);
+          /* Auto-submit after short delay so UI is ready */
+          setTimeout(() => submitComment(form, draft), 400);
+        }
+      });
+  })();
 
   document.addEventListener("click", function (e) {
     const replyBtn = e.target.closest(".js-replyComment");
@@ -745,17 +1474,26 @@ document.addEventListener("DOMContentLoaded", function () {
         if (data.success) {
           if (isEditing) {
             const commentContent = commentElement.querySelector(
-              ".forum__itemPost__comment__content"
+              ".forum__itemPost__comment__body",
             );
-            commentContent.textContent = commentText;
+            if (commentContent) {
+              commentContent.innerHTML = "";
+              commentText.split("\n").forEach((line, i, arr) => {
+                commentContent.appendChild(document.createTextNode(line));
+                if (i < arr.length - 1) {
+                  commentContent.appendChild(document.createElement("br"));
+                }
+              });
+              scheduleInitForumUi(commentElement);
+            }
             MessageSystem.showMessage(
               "success",
-              getTranslatedText("comment_edit")
+              getTranslatedText("comment_edit"),
             );
             /*MessageSystem.showMessage("success", getTranslation("comment_edit", "Коментар оновлено"));*/
           } else {
             let repliesWrapper = commentElement.querySelector(
-              ".forum__itemPost__comment__replies"
+              ".forum__itemPost__comment__replies",
             );
             if (!repliesWrapper) {
               repliesWrapper = document.createElement("div");
@@ -764,11 +1502,15 @@ document.addEventListener("DOMContentLoaded", function () {
             }
             repliesWrapper.insertAdjacentHTML(
               "beforeend",
-              data.data.comment_html
+              data.data.comment_html,
             );
+            const inserted = repliesWrapper.lastElementChild;
+            if (inserted) {
+              scheduleInitForumUi(inserted);
+            }
             MessageSystem.showMessage(
               "success",
-              getTranslatedText("comment_added")
+              getTranslatedText("comment_added"),
             );
             /*MessageSystem.showMessage("success", getTranslation("comment_added", "Коментар додано"));*/
           }
@@ -781,7 +1523,7 @@ document.addEventListener("DOMContentLoaded", function () {
         } else {
           MessageSystem.showMessage(
             "error",
-            data.data?.message || getTranslatedText("error_generic")
+            data.data?.message || getTranslatedText("error_generic"),
           );
           /*MessageSystem.showMessage("error", data.data?.message || getTranslation("error_generic"));*/
         }
@@ -799,7 +1541,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
   document.addEventListener("click", function (event) {
     const deleteBtn = event.target.closest(
-      ".js-openPopUp[data-popUp='deleteForumComment']"
+      ".js-openPopUp[data-popUp='deleteForumComment']",
     );
 
     if (deleteBtn) {
@@ -811,7 +1553,7 @@ document.addEventListener("DOMContentLoaded", function () {
   });
 
   const deleteCommentButton = document.getElementById(
-    "deleteForumCommentButton"
+    "deleteForumCommentButton",
   );
 
   if (deleteCommentButton) {
@@ -831,9 +1573,13 @@ document.addEventListener("DOMContentLoaded", function () {
         .then((data) => {
           if (data.success) {
             const commentElement = document.querySelector(
-              `.forum__itemPost__comment[data-comment-id="${deleteCommentId}"]`
+              `.forum__itemPost__comment[data-comment-id="${deleteCommentId}"]`,
             );
-            if (commentElement) commentElement.remove();
+            if (commentElement) {
+              const postEl = commentElement.closest(".forum__itemPost");
+              commentElement.remove();
+              if (postEl) forumRefreshTopLevelCommentsUi(postEl);
+            }
             document
               .querySelector("#deleteForumComment .js-closePopUp")
               ?.click();
@@ -842,7 +1588,7 @@ document.addEventListener("DOMContentLoaded", function () {
           } else {
             MessageSystem.showMessage(
               "error",
-              getTranslatedText("delete_error")
+              getTranslatedText("delete_error"),
             );
             /*MessageSystem.showMessage("error", getTranslation('delete_error', 'Помилка видалення.'));*/
           }
@@ -859,9 +1605,8 @@ document.addEventListener("DOMContentLoaded", function () {
     if (!editBtn) return;
 
     const commentEl = editBtn.closest(".forum__itemPost__comment");
-    const commentText = commentEl
-      .querySelector(".forum__itemPost__comment__content")
-      .textContent.trim();
+    const bodyEl = commentEl.querySelector(".forum__itemPost__comment__body");
+    const commentText = bodyEl ? bodyEl.textContent.trim() : "";
     const form = commentEl.querySelector(".form__forumReply");
     const input = form.querySelector("input[name='commentReply']");
 
@@ -923,7 +1668,7 @@ document.addEventListener("DOMContentLoaded", function () {
         } else {
           MessageSystem.showMessage(
             "error",
-            getTranslatedText("error_generic")
+            getTranslatedText("error_generic"),
           );
           /*MessageSystem.showMessage('error', getTranslation('error_generic'));*/
         }
@@ -943,21 +1688,21 @@ document.addEventListener("DOMContentLoaded", function () {
       const baseUrl = window.location.origin + window.location.pathname;
       const shareUrl = `${baseUrl}?highlight_post=${postId}`;
 
-      const textSpan = btn.querySelector('span');
-      const originalText = textSpan ? textSpan.textContent : '';
+      const textSpan = btn.querySelector("span");
+      const originalText = textSpan ? textSpan.textContent : "";
 
       navigator.clipboard
         .writeText(shareUrl)
         .then(() => {
           // Add copied state
-          btn.classList.add('copied');
+          btn.classList.add("copied");
           if (textSpan) {
-            textSpan.textContent = 'Скопировано';
+            textSpan.textContent = "Скопійовано";
           }
 
           // Reset after 2 seconds
           setTimeout(() => {
-            btn.classList.remove('copied');
+            btn.classList.remove("copied");
             if (textSpan) {
               textSpan.textContent = originalText;
             }
@@ -966,10 +1711,24 @@ document.addEventListener("DOMContentLoaded", function () {
         .catch(() => {
           MessageSystem.showMessage(
             "warning",
-            getTranslatedText("link_copy_error")
+            getTranslatedText("link_copy_error"),
           );
           /*MessageSystem.showMessage('error', getTranslation('link_copy_error'));*/
         });
+    }
+  });
+
+  document.addEventListener("click", function (e) {
+    const scrollBtn = e.target.closest(".js-scrollToComments");
+    if (scrollBtn) {
+      const postEl = scrollBtn.closest(".forum__itemPost");
+      const commentInput = postEl?.querySelector(
+        ".js-forumCommentForm [name='comment']",
+      );
+      if (commentInput) {
+        commentInput.scrollIntoView({ behavior: "smooth", block: "center" });
+        commentInput.focus();
+      }
     }
   });
 
@@ -980,6 +1739,7 @@ document.addEventListener("DOMContentLoaded", function () {
     const postContainer = btn.closest(".forum__itemPost");
     const hidden = postContainer.querySelectorAll(".hidden-comment");
     const shown = postContainer.querySelectorAll(".shown-comment");
+    const { showComments, hideComments } = forumUiStrings();
 
     if (hidden.length > 0) {
       hidden.forEach((el) => {
@@ -987,16 +1747,36 @@ document.addEventListener("DOMContentLoaded", function () {
         el.classList.add("shown-comment");
       });
       btn.classList.add("expanded");
-      btn.textContent = getTranslatedText("hide_comment");
-      /*btn.textContent = getTranslation('hide_comment');*/
+      btn.textContent = hideComments;
     } else {
       shown.forEach((el) => {
         el.classList.remove("shown-comment");
         el.classList.add("hidden-comment");
       });
       btn.classList.remove("expanded");
-      btn.textContent = getTranslatedText("show_comment");
-      /*btn.textContent = getTranslation('show_comment');*/
+      btn.textContent = showComments;
+    }
+    scheduleInitForumUi(postContainer);
+  });
+
+  document.addEventListener("click", function (e) {
+    const btn = e.target.closest(".js-forumCommentToggle");
+    if (!btn || btn.hidden) return;
+    const block = btn.closest(".forum__itemPost__comment__textBlock");
+    const body = block?.querySelector(".forum__itemPost__comment__body");
+    if (!body) return;
+    const commentEl = btn.closest(".forum__itemPost__comment");
+    const expanded = body.classList.toggle("is-forumCommentExpanded");
+    btn.textContent = expanded
+      ? btn.dataset.hide || forumUiStrings().hide
+      : btn.dataset.show || forumUiStrings().showAll;
+
+    if (!expanded && commentEl) {
+      const rect = commentEl.getBoundingClientRect();
+      const inView = rect.top >= 0 && rect.top < window.innerHeight * 0.5;
+      if (!inView) {
+        commentEl.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
     }
   });
 });

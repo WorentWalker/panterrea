@@ -24,14 +24,12 @@ get_header();
 <main id="infiniteScroll" class="catalogArchive firstSectionPadding">
     <div class="container">
         <div class="catalogArchive__inner">
+            <?php catalog_breadcrumbs(); ?>
             <h1 class="catalogArchive__title h3">
                 <?php echo esc_html__('Каталог', 'panterrea_v1'); ?>
             </h1>
             <div class="catalogArchive__subtitle">
                 <?php echo esc_html__('Знаходьте товари, партнерів і перевірені рішення', 'panterrea_v1'); ?>
-            </div>
-            <div class="catalogArchive__breadcrumbs">
-                <?php catalog_breadcrumbs(); ?>
             </div>
             <div class="catalogArchive__search">
                 <?php get_template_part('template-parts/search-input', null, ['width' => 'full']); ?>

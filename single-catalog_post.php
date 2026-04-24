@@ -96,14 +96,8 @@ $is_boosted = get_post_meta($post_id, '_is_boosted', true);
                     <div class="catalogPost__info__row">
                         <h2 class="catalogPost__info__price h5">
                             <?php
-                                $price = $dataPost['price'] ?? null;
-                                $currency = $dataPost['currency'] ?? '';
-
-                                if (!is_numeric($price) || floatval($price) <= 0) {
-                                    esc_html_e('Ціна договірна', 'panterrea_v1');
-                                } else {
-                                    echo esc_html($price) . ' ' . esc_html__($currency, 'panterrea_v1');
-                                }
+                                [$price, $currency] = panterrea_get_post_price_pair($post_id, $dataPost);
+                                echo panterrea_format_price_display($price, $currency);
                                 ?>
                         </h2>
                         <?php

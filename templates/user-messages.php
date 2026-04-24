@@ -75,8 +75,7 @@ get_header();
                         <div class="userMessages__chatList js-chatList">
                             <?php foreach ($chats as $chat) {
                                 $catalog_data = get_field('catalog_post', $chat->post_id);
-                                $price = $catalog_data['price'] ?? '';
-                                $currency = $catalog_data['currency'] ?? '';
+                                [$price, $currency] = panterrea_get_post_price_pair((int) $chat->post_id, $catalog_data);
                                 $featured_image_url = $catalog_data['featured_image'] ?? '';
                                 $main_image = !empty($featured_image_url) ? $featured_image_url : get_the_post_thumbnail_url($chat->post_id, 'medium');
                                 $post_link = get_permalink($chat->post_id);
@@ -115,13 +114,7 @@ get_header();
                                                 <?php echo esc_html($chat->post_title); ?>
                                             </div>
                                             <div class="userMessages__chatAd__price body2">
-                                                <?php
-                                                if (!is_numeric($price) || floatval($price) <= 0) {
-                                                    esc_html_e('Ціна договірна', 'panterrea_v1');
-                                                } else {
-                                                    echo esc_html($price . ' ' . __($currency, 'panterrea_v1'));
-                                                }
-                                                ?>
+                                                <?php echo panterrea_format_price_display($price, $currency); ?>
                                             </div>
                                         </div>
                                     <?php endif; ?>

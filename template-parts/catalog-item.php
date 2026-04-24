@@ -114,18 +114,8 @@ if (empty($currentLang) && isset($args['currentLang'])) {
         <div class="catalogItem__descRow">
             <h4 class="catalogItem__price body2">
                 <?php
-                if ($catalog_data && isset($catalog_data['price'], $catalog_data['currency'])) {
-                    $price = $catalog_data['price'];
-                    $currency = $catalog_data['currency'];
-
-                    if (!is_numeric($price) || floatval($price) <= 0) {
-                        esc_html_e('Ціна договірна', 'panterrea_v1');
-                    } else {
-                        echo esc_html($catalog_data['price']) . ' ' . __(esc_attr($catalog_data['currency']), 'panterrea_v1');
-                    }
-                } else {
-                    esc_html_e('Ціна не доступна', 'panterrea_v1');
-                }
+                [$price, $currency] = panterrea_get_post_price_pair(get_the_ID(), $catalog_data);
+                echo panterrea_format_price_display($price, $currency);
                 ?>
             </h4>
         </div>

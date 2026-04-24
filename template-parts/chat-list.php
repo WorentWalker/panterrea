@@ -8,8 +8,7 @@ $empty_message = $args['empty_message'] ?? null;
 if (!empty($chats)) { ?>
     <div class="userMessages__chatList">
         <?php foreach ($chats as $chat) {
-            $price = get_field('catalog_post_price', $chat->post_id);
-            $currency = get_field('catalog_post_currency', $chat->post_id);
+            [$price, $currency] = panterrea_get_post_price_pair((int) $chat->post_id);
             $main_image = get_the_post_thumbnail_url($chat->post_id, 'medium');
             $post_link = get_permalink($chat->post_id);
 
@@ -26,7 +25,7 @@ if (!empty($chats)) { ?>
                         <?php echo esc_html($chat->post_title); ?>
                     </div>
                     <div class="userMessages__chatAd__price body2">
-                        <?php echo esc_html($price . ' ' . $currency); ?>
+                        <?php echo panterrea_format_price_display($price, $currency); ?>
                     </div>
                 </div>
                 <div class="userMessages__chatAd__options">
